@@ -1,0 +1,45 @@
+{
+  "profiles": {
+    "timeEfforts": [
+      {"name": "EventId", "context": "root", "path": "eventID"},
+      {"name": "EventTime", "context": "root", "path": "eventTime"},
+      {"name": "Code", "context": "data", "path": "code"},
+      {"name": "BusinessPartnerCode", "context": "data", "path": "businessPartner/code"},
+      {"name": "Subject", "context": "data", "path": "subject"},
+      {"name": "ActivityCode", "context": "activity", "path": "code"},
+      {"name": "ResponsibleCode", "context": "activity", "path": "responsibles/code", "multiple": true},
+      {"name": "TimeEffortId", "context": "timeEffort", "path": "id"},
+      {"name": "StartDateTime", "context": "timeEffort", "path": "startDateTime"},
+      {"name": "EndDateTime", "context": "timeEffort", "path": "endDateTime"},
+      {"name": "BreakInMinutes", "context": "timeEffort", "path": "breakInMinutes"},
+      {"name": "ChargeOption", "context": "timeEffort", "path": "chargeOption"},
+      {"name": "TaskId", "context": "timeEffort", "path": "task/id"},
+      {"name": "UdfValue", "context": "timeEffort", "path": "udfValues/value", "multiple": true}
+    ],
+    "expenses": [
+      {"name": "EventId", "context": "root", "path": "eventID"},
+      {"name": "EventTime", "context": "root", "path": "eventTime"},
+      {"name": "BusinessPartnerCode", "context": "data", "path": "businessPartner/code"},
+      {"name": "ServiceCallCode", "context": "data", "path": "code"},
+      {"name": "ServiceCallSubject", "context": "data", "path": "subject"},
+      {"name": "ActivityCode", "context": "activity", "path": "code"},
+      {"name": "ActivitySubject", "context": "activity", "path": "subject"},
+      {"name": "ExpenseId", "context": "expense", "path": "id"},
+      {"name": "ExpenseDate", "context": "expense", "path": "date"},
+      {"name": "ExpenseTypeCode", "context": "expense", "path": "type/code"},
+      {"name": "ExpenseTypeId", "context": "expense", "path": "type/id"},
+      {"name": "ExpenseQuantity", "context": "expense", "path": "udfValues/value", "index": 0},
+      {"name": "ExpenseUdfValue2", "context": "expense", "path": "udfValues/value", "index": 1},
+      {"name": "ExpenseUdfValue3", "context": "expense", "path": "udfValues/value", "index": 2},
+      {"name": "ChargeOption", "context": "expense", "path": "chargeOption"},
+      {"name": "ExternalAmount", "context": "expense", "path": "externalAmount"},
+      {"name": "InternalAmount", "context": "expense", "path": "internalAmount"},
+      {"name": "Tax", "context": "expense", "path": "tax"},
+      {"name": "ApprovalStatus", "context": "expense", "path": "approvalStatus"},
+      {"name": "SyncStatus", "context": "expense", "path": "syncStatus"},
+      {"name": "Inactive", "context": "expense", "path": "inactive"},
+      {"name": "CreateDateTime", "context": "expense", "path": "createDateTime"},
+      {"name": "ObjectId", "context": "expense", "path": "object/objectId"}
+    ]
+  }
+}

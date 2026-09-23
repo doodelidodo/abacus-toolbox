@@ -1,0 +1,18 @@
+# Laufzeit / Build
+__pycache__/
+*.pyc
+output/
+windows/.build-venv/
+windows/build/
+windows/dist/
+windows/release/
+
+# Geheimnisse
+.aws-api-key.txt
+*.env
+.env
+
+# Echte Kundendaten nie einchecken: XML/Excel nur im Ordner samples/ erlaubt
+*.xml
+*.xlsx
+!samples/*.xml

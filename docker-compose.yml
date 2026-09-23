@@ -1,0 +1,17 @@
+services:
+  xml-to-xlsx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fsm-xml-to-xlsx:latest
+    container_name: fsm-xml-to-xlsx
+    ports:
+      - "8000:8000"
+    environment:
+      MAX_UPLOAD_MB: "20"
+      LOG_LEVEL: "INFO"
+      # API_KEY: "bitte-ein-langes-geheimes-token"   # aktivieren -> Header X-API-Key wird Pflicht
+    volumes:
+      # Feldkonfiguration live aus dem Repository: Änderungen wirken sofort, ohne Rebuild
+      - ./converter/xml_to_xlsx_config.json:/config/xml_to_xlsx_config.json:ro
+    restart: unless-stopped

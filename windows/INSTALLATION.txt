@@ -1,0 +1,38 @@
+FSM XML -> Excel  |  Installation als Windows-Dienst
+=====================================================
+
+Voraussetzung: Windows Server / Windows 10+, Administratorrechte. Python ist NICHT nötig.
+
+1. ZIP auf den Server kopieren und entpacken, z.B. nach C:\Install\fsm-xml-service
+
+2. PowerShell als Administrator öffnen:
+
+     cd C:\Install\fsm-xml-service
+     powershell -ExecutionPolicy Bypass -File .\install-service.ps1
+
+   Am Ende muss "Health: ok" stehen.
+
+   Optionen:
+     -Port 8001                       anderer Port (Standard 8000)
+     -ApiKey "langer-geheimer-key"    API-Key verlangen (Header X-API-Key)
+     -ListenAll                       auch von anderen Rechnern erreichbar (nur mit -ApiKey!)
+
+3. In Abacus (Baustein "Webservice Aufruf ausführen"):
+     Method       POST
+     URI          http://localhost:8000/convert/raw
+     Headers      Content-Type: application/xml   (+ X-API-Key: ..., falls gesetzt)
+     QueryParams  filename=<Name der XML-Datei>
+     BodyFile     die XML-Datei
+     -> Die Excel-Datei steht in ResponseFile.
+
+Danach:
+  Programmordner   C:\Program Files\FsmXmlToXlsx
+  Einstellungen    settings.json            (nach Änderung: Restart-Service FsmXmlToXlsx)
+  Feldkonfig       xml_to_xlsx_config.json  (wirkt sofort)
+  Logs             logs\service.log
+  Test             http://localhost:8000/health  bzw.  http://localhost:8000/docs
+  Update           neue ZIP entpacken, install-service.ps1 erneut ausführen
+                   (Einstellungen und Feldkonfig bleiben erhalten)
+  Entfernen        powershell -ExecutionPolicy Bypass -File .\uninstall-service.ps1 [-RemoveFiles]
+
+Ausführliche Doku: README.md und docs\ im Repository.

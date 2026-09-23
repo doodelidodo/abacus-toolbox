@@ -1,0 +1,7 @@
+# Build-Kontext ist das Repository -> alles ausschliessen, nur das Nötige erlauben
+*
+!requirements.txt
+!converter/xml_to_xlsx.py
+!converter/xml_to_xlsx_config.json
+!app/
+app/__pycache__
