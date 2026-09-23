@@ -5,13 +5,14 @@ Windows-Dienst direkt auf dem Abacus-Server:
 
 - kein Docker, kein Linux, auf dem Zielserver auch kein Python nötig
 - startet automatisch mit Windows und wird bei einem Absturz automatisch neu gestartet
-- standardmässig **nur lokal erreichbar** (`127.0.0.1`), Abacus ruft `http://localhost:8000/convert/raw` auf
+- standardmässig **nur lokal erreichbar** (`127.0.0.1`), Abacus ruft z.B. `http://localhost:8000/fsm/xml-to-xlsx` auf
+- alle Werkzeuge der Toolbox in einem Dienst; welche aktiv sind, steht in `settings.json`
 - keine Daten verlassen den Server
 
 ```mermaid
 flowchart LR
     subgraph VM[Windows-Server des Kunden]
-        A[Abacus] -- "http://localhost:8000/convert/raw" --> D[Dienst FsmXmlToXlsx<br/>fsm-xml-service.exe]
+        A[Abacus] -- "http://localhost:8000/&lt;werkzeug&gt;" --> D[Dienst FsmXmlToXlsx<br/>Abacus Toolbox<br/>fsm-xml-service.exe]
     end
 ```
 
@@ -75,6 +76,7 @@ Optionen:
 |---|---|
 | `-Port 8001` | anderer Port |
 | `-ApiKey "…"` | API-Key setzen (Header `X-API-Key` wird Pflicht) |
+| `-Modules "fsm_xlsx,encoding"` | nur diese Werkzeuge aktivieren (Standard: alle) |
 | `-ListenAll` | auch von anderen Rechnern erreichbar (`0.0.0.0`) und Firewall-Regel anlegen. **Nur mit `-ApiKey` verwenden.** |
 | `-InstallDir "D:\Apps\FsmXmlToXlsx"` | anderer Installationsordner |
 
@@ -97,6 +99,7 @@ Im Installationsordner (Standard `C:\Program Files\FsmXmlToXlsx\settings.json`):
   "host": "127.0.0.1",
   "port": 8000,
   "api_key": "",
+  "modules": [],
   "config_path": "xml_to_xlsx_config.json",
   "log_level": "INFO"
 }
@@ -107,6 +110,7 @@ Im Installationsordner (Standard `C:\Program Files\FsmXmlToXlsx\settings.json`):
 | `host` | `127.0.0.1` = nur lokal; `0.0.0.0` = aus dem Netzwerk erreichbar (dann Firewall und API-Key!) |
 | `port` | Port |
 | `api_key` | leer = kein Key nötig |
+| `modules` | aktive Werkzeuge, z.B. `["fsm_xlsx"]`; leer `[]` = alle. Namen siehe `/modules` bzw. README |
 | `config_path` | Feldkonfiguration, relativ zum Installationsordner oder absolut |
 | `log_level` | `INFO`, `DEBUG`, … |
 
@@ -114,7 +118,7 @@ Nach Änderungen an `settings.json` den Dienst neu starten:
 ```powershell
 Restart-Service FsmXmlToXlsx
 ```
-Änderungen an der **Feldkonfiguration** (`xml_to_xlsx_config.json`) wirken sofort, ohne Neustart.
+Änderungen an der **Feldkonfiguration** des FSM-Werkzeugs (`xml_to_xlsx_config.json`) wirken sofort, ohne Neustart.
 
 ## Betrieb
 

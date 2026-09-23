@@ -25,6 +25,11 @@ docker compose up -d --build
 .\test.ps1 -BaseUrl http://server:8000 -ApiKey "…"
 ```
 
+### Werkzeuge ein-/ausschalten
+
+In `docker-compose.yml` die Zeile `ENABLED_MODULES` einkommentieren, z.B. `"fsm_xlsx"`, dann `docker compose up -d`.
+Leer bzw. nicht gesetzt = alle Werkzeuge.
+
 ### API-Key aktivieren
 
 In `docker-compose.yml` die Zeile `API_KEY` einkommentieren und einen langen, zufälligen Wert eintragen, dann
@@ -51,7 +56,7 @@ Das `Dockerfile` erzeugt ein normales Linux-Container-Image (Port 8000, Healthch
 unverändert auf jeder Container-Plattform, z.B. **Azure Container Apps**, Azure App Service for Containers oder
 Kubernetes. Zu beachten:
 
-- Umgebungsvariablen `API_KEY` (als Secret), optional `MAX_UPLOAD_MB`, `LOG_LEVEL`
+- Umgebungsvariablen `API_KEY` (als Secret), optional `ENABLED_MODULES`, `MAX_UPLOAD_MB`, `LOG_LEVEL`
 - Die Feldkonfiguration ist im Image enthalten. Für eine eigene Konfiguration eine Datei nach
   `/config/xml_to_xlsx_config.json` einbinden oder `CONFIG_PATH` setzen.
 - Im Internet nur über HTTPS betreiben (bieten die genannten Plattformen automatisch).
@@ -61,6 +66,6 @@ Kubernetes. Zu beachten:
 Image bauen und in eine Registry laden (Beispiel):
 
 ```powershell
-docker build -t <registry>/fsm-xml-to-xlsx:1.1.0 .
-docker push <registry>/fsm-xml-to-xlsx:1.1.0
+docker build -t <registry>/abacus-toolbox:2.0.0 .
+docker push <registry>/abacus-toolbox:2.0.0
 ```

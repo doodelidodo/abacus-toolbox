@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Baut den XML->XLSX-Service und stellt ihn als AWS Lambda mit öffentlicher HTTPS-URL bereit.
+    Baut die Abacus Toolbox und stellt sie als AWS Lambda mit öffentlicher HTTPS-URL bereit.
 
 .DESCRIPTION
     Erster Aufruf: legt alles an (ECR-Repository, IAM-Rolle, Lambda, Function URL)
@@ -22,6 +22,7 @@ param(
     [string]$RepositoryName = "fsm-xml-to-xlsx",
     [string]$RoleName = "fsm-xml-to-xlsx-lambda-role",
     [string]$ApiKey = "",
+    [string]$Modules = $null,                    # z.B. "fsm_xlsx,encoding"; leer = alle; ohne Angabe = unverändert
     [string]$Profile = "",
     [int]$MemoryMb = 512,
     [int]$TimeoutSeconds = 30
@@ -159,7 +160,13 @@ if (-not $ApiKey) {
         $newKeyCreated = $true
     }
 }
-$envFile = Write-JsonFile "env.json" @{ Variables = @{ API_KEY = $ApiKey; LOG_LEVEL = "INFO" } }
+$envVars = @{ API_KEY = $ApiKey; LOG_LEVEL = "INFO" }
+if ($PSBoundParameters.ContainsKey("Modules")) {
+    if ($Modules) { $envVars.ENABLED_MODULES = $Modules }
+} elseif ($existing -and $existing.Environment -and $existing.Environment.Variables.ENABLED_MODULES) {
+    $envVars.ENABLED_MODULES = $existing.Environment.Variables.ENABLED_MODULES
+}
+$envFile = Write-JsonFile "env.json" @{ Variables = $envVars }
 
 if (-not $existing) {
     AwsJson lambda create-function --function-name $FunctionName --package-type Image `
@@ -240,7 +247,8 @@ Write-Host ""
 Write-Host "=====================================================================" -ForegroundColor Green
 Write-Host " Service online:  $BaseUrl"
 Write-Host " Swagger-UI:      $BaseUrl/docs"
-Write-Host " Convert:         POST $BaseUrl/convert   (Header X-API-Key)"
+Write-Host " Werkzeuge:       $BaseUrl/modules"
+Write-Host " FSM -> Excel:    POST $BaseUrl/fsm/xml-to-xlsx   (Header X-API-Key)"
 if ($newKeyCreated) {
     Write-Host " Neuer API-Key:   $ApiKey" -ForegroundColor Yellow
 }

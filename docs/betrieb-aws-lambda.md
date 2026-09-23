@@ -1,6 +1,6 @@
 # Betrieb auf AWS Lambda
 
-Der Service läuft als AWS-Lambda-Funktion (Container-Image) in der Region **Zürich (`eu-central-2`)** und ist über
+Die Toolbox läuft als AWS-Lambda-Funktion (Container-Image) in der Region **Zürich (`eu-central-2`)** und ist über
 eine öffentliche **HTTPS-Adresse mit API-Key** erreichbar. Es gibt keinen Server, der gewartet werden muss.
 Bezahlt wird nur pro Aufruf; bei einigen tausend Umwandlungen pro Monat sind das wenige Rappen.
 
@@ -80,10 +80,11 @@ API-Key bleiben gleich.
 |---|---|
 | `-Region eu-central-1` | andere Region (Standard `eu-central-2`) |
 | `-ApiKey "…"` | neuen API-Key setzen (danach in Abacus anpassen) |
+| `-Modules "fsm_xlsx"` | nur diese Werkzeuge aktivieren; `-Modules ""` = wieder alle. Ohne Angabe bleibt die bisherige Einstellung |
 | `-Profile kunde-x` | anderes AWS-CLI-Profil, z.B. für das Konto eines Kunden |
 | `-MemoryMb 1024` / `-TimeoutSeconds 60` | mehr Speicher / längere Laufzeit |
 
-**Feldkonfiguration:** Auf Lambda ist `converter/xml_to_xlsx_config.json` ins Image eingebaut. Nach einer Änderung
+**Feldkonfiguration des FSM-Werkzeugs:** Auf Lambda ist `converter/xml_to_xlsx_config.json` ins Image eingebaut. Nach einer Änderung
 `deploy-aws.ps1` erneut ausführen.
 
 ## Testen

@@ -1,5 +1,5 @@
 """
-Dünne Schicht um das bestehende xml_to_xlsx.py:
+FSM-Werkzeug, Adapter um converter/xml_to_xlsx.py:
 nimmt XML als Bytes entgegen und liefert die XLSX-Datei als Bytes zurück,
 ohne etwas auf die Platte zu schreiben.
 
@@ -15,18 +15,15 @@ import defusedxml.ElementTree as SafeET
 from defusedxml import DefusedXmlException
 
 import xml_to_xlsx
+from core.http import ToolError
 
 RECORD_TYPES = ("timeEfforts", "expenses")
 CONFIG_PATH = os.environ.get("CONFIG_PATH", "/config/xml_to_xlsx_config.json")
 
 
-class ConversionError(Exception):
-    """Fachlicher Fehler, wird von der API als 4xx zurückgegeben."""
-
-    def __init__(self, message, status_code=422):
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
+def ConversionError(message, status_code=422):
+    """Fachlicher Fehler -> wird von der API als JSON mit Statuscode zurückgegeben."""
+    return ToolError(message, status_code)
 
 
 @dataclass
@@ -84,11 +81,6 @@ def detect_record_type(root, filename, requested_type):
         if has_expenses and not has_efforts:
             return "expenses"
     return "timeEfforts"
-
-
-def xlsx_filename(filename, record_type):
-    base = os.path.splitext(os.path.basename(filename or ""))[0]
-    return (base or f"converted_{record_type}") + ".xlsx"
 
 
 def convert(xml_bytes, filename=None, requested_type=None):

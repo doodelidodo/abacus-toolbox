@@ -1,5 +1,5 @@
 """
-FSM XML -> XLSX als Windows-Dienst (ohne Docker).
+Abacus Toolbox als Windows-Dienst (ohne Docker).
 
 Die gleiche FastAPI-App wie im Docker-Container, gestartet mit uvicorn.
 Einstellungen stehen in settings.json neben der .exe:
@@ -7,6 +7,7 @@ Einstellungen stehen in settings.json neben der .exe:
       "host": "127.0.0.1",          # 127.0.0.1 = nur lokal (Abacus auf gleichem Server)
       "port": 8000,
       "api_key": "",                # leer = kein Key nötig
+      "modules": [],                # aktive Werkzeuge, z.B. ["fsm_xlsx"]; leer = alle
       "config_path": "xml_to_xlsx_config.json",
       "log_level": "INFO"
     }
@@ -24,13 +25,14 @@ import os
 import sys
 
 SERVICE_NAME = "FsmXmlToXlsx"
-SERVICE_DISPLAY_NAME = "FSM XML to XLSX Service"
-SERVICE_DESCRIPTION = "Wandelt FSM/Abacus timeEfforts- und expenses-XML per REST-API in Excel um."
+SERVICE_DISPLAY_NAME = "Abacus Toolbox (FSM XML to XLSX)"
+SERVICE_DESCRIPTION = "Abacus Toolbox: REST-Werkzeuge für Abacus-Prozesse (u.a. FSM-XML -> Excel)."
 
 DEFAULT_SETTINGS = {
     "host": "127.0.0.1",
     "port": 8000,
     "api_key": "",
+    "modules": [],
     "config_path": "xml_to_xlsx_config.json",
     "log_level": "INFO",
 }
@@ -61,6 +63,10 @@ def apply_settings(settings, log_to_file):
     os.environ["CONFIG_PATH"] = settings["config_path"]
     os.environ["API_KEY"] = settings.get("api_key") or ""
     os.environ["LOG_LEVEL"] = settings.get("log_level") or "INFO"
+    modules = settings.get("modules") or []
+    if isinstance(modules, str):
+        modules = modules.split(",")
+    os.environ["ENABLED_MODULES"] = ",".join(m.strip() for m in modules if m and m.strip())
 
     root = logging.getLogger()
     root.setLevel(os.environ["LOG_LEVEL"])

@@ -1,158 +1,86 @@
 """
-REST-API für xml_to_xlsx:
-  POST /convert        multipart/form-data, Feld "file"  -> XLSX
-  POST /convert/raw    XML direkt im Body               -> XLSX
-  GET  /health         Healthcheck
-  GET  /docs           Swagger-UI zum Testen im Browser
+Abacus Toolbox: ein REST-Service mit mehreren Werkzeugen für Aufgaben, die Abacus nicht selbst erledigt.
+
+Aufbau:
+    core/      gemeinsame Bausteine (Einstellungen, API-Key, Datei lesen/zurückgeben, Fehler)
+    modules/   ein Unterordner pro Werkzeug (eigener Router)
+
+Allgemeine Endpunkte:
+    GET  /health       Healthcheck + aktive Werkzeuge
+    GET  /modules      Liste der aktiven Werkzeuge mit Endpunkten
+    *    /debug/echo   zeigt, was ankommt (Fehlersuche)
+    GET  /docs         Swagger-Oberfläche
 """
 
 import logging
-import os
-import secrets
-from typing import Optional
-from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
-from fastapi.responses import JSONResponse, Response
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 
-from converter import CONFIG_PATH, ConversionError, convert, xlsx_filename
+from core import settings
+from core.http import ToolError
+from core.security import require_api_key
+from modules import AVAILABLE
 
-XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-MAX_UPLOAD_BYTES = int(float(os.environ.get("MAX_UPLOAD_MB", "20")) * 1024 * 1024)
-API_KEY = os.environ.get("API_KEY", "").strip()
+logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("toolbox")
 
-logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
-log = logging.getLogger("fsm-xml-to-xlsx")
+unknown = [name for name in settings.ENABLED_MODULES if name not in AVAILABLE]
+if unknown:
+    log.warning("Unbekannte Module in ENABLED_MODULES ignoriert: %s (verfügbar: %s)", unknown, list(AVAILABLE))
+ENABLED = {
+    name: module for name, module in AVAILABLE.items()
+    if not settings.ENABLED_MODULES or name in settings.ENABLED_MODULES
+}
 
 app = FastAPI(
-    title="FSM XML → XLSX",
-    description="Wandelt FSM/Abacus timeEfforts- und expenses-XML in eine Excel-Datei um.",
-    version="1.1.0",
+    title=settings.SERVICE_TITLE,
+    version=settings.VERSION,
+    description=(
+        "Werkzeuge für Abacus-Prozesse (Baustein „Webservice Aufruf ausführen“): Datei als Request-Body schicken, "
+        "Ergebnis als Datei zurückbekommen.\n\n"
+        "Aktive Werkzeuge: " + ", ".join(f"**{m.TITLE}**" for m in ENABLED.values())
+    ),
+    openapi_tags=[{"name": m.TITLE, "description": m.DESCRIPTION} for m in ENABLED.values()]
+    + [{"name": "System", "description": "Healthcheck, Übersicht, Fehlersuche"}],
 )
 
-
-def check_api_key(x_api_key: Optional[str] = Header(default=None)):
-    """Nur aktiv, wenn die Umgebungsvariable API_KEY gesetzt ist."""
-    if API_KEY and not (x_api_key and secrets.compare_digest(x_api_key, API_KEY)):
-        raise HTTPException(status_code=401, detail="Ungültiger oder fehlender X-API-Key.")
+for module in ENABLED.values():
+    app.include_router(module.router, dependencies=[Depends(require_api_key)])
+log.info("%s %s – aktive Werkzeuge: %s", settings.SERVICE_TITLE, settings.VERSION, ", ".join(ENABLED) or "keine")
 
 
-@app.exception_handler(ConversionError)
-async def conversion_error_handler(request: Request, exc: ConversionError):
-    log.warning("Konvertierung fehlgeschlagen: %s", exc.message)
+@app.exception_handler(ToolError)
+async def tool_error_handler(request: Request, exc: ToolError):
+    log.warning("%s: %s", request.url.path, exc.message)
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
-
-
-def xlsx_response(xml_bytes: bytes, filename: Optional[str], record_type: Optional[str]) -> Response:
-    if len(xml_bytes) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail=f"Datei grösser als {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.")
-
-    result = convert(xml_bytes, filename, record_type)
-    out_name = xlsx_filename(filename, result.record_type)
-    log.info("%s -> %s (%s, %d Zeilen)", filename, out_name, result.record_type, result.row_count)
-
-    ascii_name = out_name.encode("ascii", "ignore").decode() or "converted.xlsx"
-    return Response(
-        content=result.content,
-        media_type=XLSX_MEDIA_TYPE,
-        headers={
-            "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(out_name)}",
-            "X-Record-Type": result.record_type,
-            "X-Row-Count": str(result.row_count),
-        },
-    )
 
 
 @app.get("/health", tags=["System"])
 def health():
-    return {"status": "ok", "config": CONFIG_PATH if os.path.isfile(CONFIG_PATH) else "builtin-defaults"}
+    extra = {}
+    for module in ENABLED.values():
+        extra.update(getattr(module, "health_info", lambda: {})())
+    return {"status": "ok", "version": settings.VERSION, "modules": list(ENABLED), **extra}
 
 
-@app.post(
-    "/convert",
-    tags=["Convert"],
-    dependencies=[Depends(check_api_key)],
-    response_class=Response,
-    responses={200: {"content": {XLSX_MEDIA_TYPE: {}}, "description": "Die erzeugte Excel-Datei"}},
-    summary="XML-Datei hochladen, Excel zurückbekommen",
-)
-async def convert_upload(
-    file: UploadFile = File(..., description="timeEfforts- oder expenses-XML"),
-    type: Optional[str] = Query(
-        default=None,
-        description="timeEfforts oder expenses. Leer = automatisch (Dateiname, sonst Inhalt).",
-    ),
-):
-    xml_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
-    return xlsx_response(xml_bytes, file.filename, type)
-
-
-@app.post(
-    "/convert/raw",
-    tags=["Convert"],
-    dependencies=[Depends(check_api_key)],
-    response_class=Response,
-    responses={200: {"content": {XLSX_MEDIA_TYPE: {}}, "description": "Die erzeugte Excel-Datei"}},
-    summary="XML direkt im Request-Body senden (Content-Type: application/xml)",
-)
-async def convert_raw(
-    request: Request,
-    filename: Optional[str] = Query(default=None, description="Name für die Excel-Datei, z.B. 4711_expenses.xml"),
-    type: Optional[str] = Query(default=None, description="timeEfforts oder expenses. Leer = automatisch."),
-):
-    xml_bytes, form_filename = await read_body(request)
-    log.info(
-        "convert/raw: content-type=%s content-length=%s transfer-encoding=%s user-agent=%s -> %d Bytes gelesen",
-        request.headers.get("content-type"),
-        request.headers.get("content-length"),
-        request.headers.get("transfer-encoding"),
-        request.headers.get("user-agent"),
-        len(xml_bytes),
-    )
-    if not xml_bytes.strip():
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Die XML-Datei ist leer: Im Request-Body kamen 0 Bytes an "
-                f"(Content-Type: {request.headers.get('content-type') or '-'}, "
-                f"Content-Length: {request.headers.get('content-length') or '-'}). "
-                "Prüfen, ob die Datei für den aufrufenden Server lesbar ist."
-            ),
+@app.get("/modules", tags=["System"], summary="Aktive Werkzeuge mit ihren Endpunkten")
+def modules_overview():
+    result = []
+    for name, module in ENABLED.items():
+        endpoints = sorted(
+            {f"{method} {route.path}" for route in module.router.routes for method in route.methods
+             if not getattr(route, "deprecated", False)}
         )
-    return xlsx_response(xml_bytes, filename or form_filename, type)
-
-
-async def read_body(request: Request):
-    """
-    Liest den Body. Normalfall: XML direkt im Body.
-    Falls der Aufrufer doch multipart/form-data schickt, wird die erste Datei
-    (bzw. das erste Feld) aus dem Formular genommen.
-    Rückgabe: (bytes, dateiname_aus_formular_oder_None)
-    """
-    content_type = (request.headers.get("content-type") or "").lower()
-    if content_type.startswith("multipart/form-data"):
-        form = await request.form()
-        for _, value in form.multi_items():
-            if hasattr(value, "read"):
-                return (await value.read(MAX_UPLOAD_BYTES + 1)), value.filename
-        for _, value in form.multi_items():
-            if isinstance(value, str) and value.strip():
-                return value.encode("utf-8"), None
-        return b"", None
-
-    data = bytearray()
-    async for chunk in request.stream():
-        data.extend(chunk)
-        if len(data) > MAX_UPLOAD_BYTES:
-            break
-    return bytes(data), None
+        result.append({"name": name, "title": module.TITLE, "description": module.DESCRIPTION, "endpoints": endpoints})
+    return result
 
 
 @app.api_route(
     "/debug/echo",
     methods=["GET", "POST", "PUT"],
     tags=["System"],
-    dependencies=[Depends(check_api_key)],
+    dependencies=[Depends(require_api_key)],
     summary="Zeigt, was beim Service ankommt (Header, Body-Länge, Body-Anfang) – zur Fehlersuche",
 )
 async def debug_echo(request: Request):

@@ -8,6 +8,7 @@
 .PARAMETER ListenAll   Auch von anderen Rechnern erreichbar (0.0.0.0) + Firewall-Regel.
                        Ohne Schalter nur lokal (127.0.0.1) – richtig, wenn Abacus auf demselben Server läuft.
 .PARAMETER ApiKey      Optionaler API-Key (Header X-API-Key). Bei -ListenAll dringend empfohlen.
+.PARAMETER Modules     Aktive Werkzeuge, kommagetrennt, z.B. "fsm_xlsx,encoding". Leer = alle.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\install-service.ps1
@@ -18,7 +19,8 @@ param(
     [string]$InstallDir = "C:\Program Files\FsmXmlToXlsx",
     [int]$Port = 0,
     [switch]$ListenAll,
-    [string]$ApiKey = $null
+    [string]$ApiKey = $null,
+    [string]$Modules = $null
 )
 $ErrorActionPreference = "Stop"
 $ServiceName = "FsmXmlToXlsx"
@@ -72,7 +74,7 @@ if (-not (Test-Path $configTarget)) { Copy-Item (Join-Path $Source "xml_to_xlsx_
 
 Step "Einstellungen (settings.json)"
 $settingsPath = Join-Path $InstallDir "settings.json"
-$settings = [ordered]@{ host = "127.0.0.1"; port = 8000; api_key = ""; config_path = "xml_to_xlsx_config.json"; log_level = "INFO" }
+$settings = [ordered]@{ host = "127.0.0.1"; port = 8000; api_key = ""; modules = @(); config_path = "xml_to_xlsx_config.json"; log_level = "INFO" }
 if (Test-Path $settingsPath) {
     $old = Get-Content $settingsPath -Raw | ConvertFrom-Json
     foreach ($p in $old.PSObject.Properties) { $settings[$p.Name] = $p.Value }
@@ -80,6 +82,7 @@ if (Test-Path $settingsPath) {
 if ($Port -gt 0) { $settings.port = $Port }
 if ($ListenAll) { $settings.host = "0.0.0.0" }
 if ($PSBoundParameters.ContainsKey("ApiKey")) { $settings.api_key = $ApiKey }
+if ($PSBoundParameters.ContainsKey("Modules")) { $settings.modules = @(($Modules -split ",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
 [System.IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json))
 Write-Host ($settings | ConvertTo-Json)
 

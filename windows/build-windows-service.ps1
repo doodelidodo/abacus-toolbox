@@ -38,7 +38,8 @@ try {
     & $py -m PyInstaller --noconfirm --clean --onedir --console `
         --name fsm-xml-service `
         --paths $AppDir --paths $FsmDir `
-        --hidden-import main --hidden-import converter --hidden-import xml_to_xlsx `
+        --hidden-import main --hidden-import xml_to_xlsx `
+        --collect-submodules core --collect-submodules modules `
         --hidden-import win32timezone --hidden-import python_multipart `
         --collect-submodules uvicorn `
         --distpath (Join-Path $Here "dist") --workpath (Join-Path $Here "build") --specpath (Join-Path $Here "build") `

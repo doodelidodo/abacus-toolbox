@@ -4,4 +4,4 @@
 !converter/xml_to_xlsx.py
 !converter/xml_to_xlsx_config.json
 !app/
-app/__pycache__
+**/__pycache__

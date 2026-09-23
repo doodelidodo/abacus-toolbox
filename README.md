@@ -1,22 +1,27 @@
-# FSM XML → Excel (REST-Service)
+# Abacus Toolbox
 
-Wandelt die XML-Dateien aus dem **SAP Field Service Management (FSM) Connector** für Abacus
-(`timeEfforts` = Zeiterfassungen, `expenses` = Spesen) in eine flache **Excel-Tabelle (.xlsx)** um.
+Ein REST-Service mit **Werkzeugen für Aufgaben, die Abacus nicht selbst erledigt**: Dateien umwandeln,
+aufbereiten, prüfen. Statt für jede Aufgabe ein eigenes Programm zu bauen und zu verteilen, läuft **ein** Dienst
+mit mehreren Endpunkten. Ein neues Werkzeug ist ein neues Modul, Installation und Aufruf bleiben gleich.
 
-Der Service nimmt eine XML-Datei per HTTP entgegen und schickt die fertige Excel-Datei direkt als Antwort
-zurück. Er ist dafür gebaut, aus einem **Abacus-Prozess** (Baustein „Webservice Aufruf ausführen“)
-aufgerufen zu werden, funktioniert aber mit jedem HTTP-Client.
+Aufgerufen wird der Service aus einem **Abacus-Prozess** mit dem Baustein „Webservice Aufruf ausführen“:
+Datei als Request-Body schicken, Ergebnis als Datei zurückbekommen. Er funktioniert mit jedem HTTP-Client.
 
 **Repository:** <https://github.com/doodelidodo/fsm-xml-to-xlsx>
 
 ```
-Abacus / Client  ──POST XML──►  FSM XML → Excel  ──►  .xlsx zurück (gleicher Dateiname)
+Abacus / Client  ──POST Datei──►  Abacus Toolbox  /<werkzeug>  ──►  Ergebnis-Datei zurück
 ```
 
-- Eine Zeile pro Zeiterfassung bzw. Spesenposition; Werte aus den übergeordneten Ebenen
-  (Serviceauftrag, Geschäftspartner, Aktivität, Verantwortliche) werden auf jede Zeile übernommen.
-- Welche Spalten erzeugt werden, steht in einer **JSON-Konfiguration** und kann ohne Programmierung angepasst werden.
-- Es werden **keine Daten gespeichert**: Die Excel-Datei entsteht im Arbeitsspeicher und wird direkt zurückgegeben.
+## Werkzeuge
+
+| Werkzeug | Modul | Endpunkt | Wofür | Anleitung |
+|---|---|---|---|---|
+| **FSM XML → Excel** | `fsm_xlsx` | `POST /fsm/xml-to-xlsx` | SAP-FSM-XML (Zeiterfassungen `timeEfforts`, Spesen `expenses`) in eine flache Excel-Tabelle umwandeln | [docs/werkzeug-fsm-xlsx.md](docs/werkzeug-fsm-xlsx.md) |
+| **Zeichensatz umwandeln** | `encoding` | `POST /text/convert-encoding` | Textdateien (CSV, TXT, XML …) z.B. von UTF-8 nach ANSI umwandeln, Zeilenenden vereinheitlichen | [docs/werkzeug-encoding.md](docs/werkzeug-encoding.md) |
+
+Welche Werkzeuge ein Kunde bekommt, lässt sich pro Installation einstellen (`ENABLED_MODULES`, siehe
+[Einstellungen](#einstellungen)). Ein neues Werkzeug hinzufügen: [docs/neues-werkzeug.md](docs/neues-werkzeug.md).
 
 ---
 
@@ -26,11 +31,10 @@ Abacus / Client  ──POST XML──►  FSM XML → Excel  ──►  .xlsx zu
 2. [Repository-Struktur](#repository-struktur)
 3. [Betriebsvarianten](#betriebsvarianten)
 4. [Schnellstart (lokal mit Docker)](#schnellstart-lokal-mit-docker)
-5. [API](#api)
-6. [Feldkonfiguration](#feldkonfiguration)
-7. [Einstellungen](#einstellungen)
-8. [Sicherheit und Datenschutz](#sicherheit-und-datenschutz)
-9. [Weiterführende Anleitungen](#weiterführende-anleitungen)
+5. [API: gemeinsame Regeln](#api-gemeinsame-regeln)
+6. [Einstellungen](#einstellungen)
+7. [Sicherheit und Datenschutz](#sicherheit-und-datenschutz)
+8. [Weiterführende Anleitungen](#weiterführende-anleitungen)
 
 ---
 
@@ -38,63 +42,69 @@ Abacus / Client  ──POST XML──►  FSM XML → Excel  ──►  .xlsx zu
 
 ```mermaid
 flowchart LR
-    A[Abacus-Prozess<br/>„Webservice Aufruf ausführen“] -- "POST /convert/raw<br/>XML im Body" --> B
-    subgraph S[FSM XML → Excel]
-        B[REST-API<br/>app/main.py] --> C[Prüfung & Typ-Erkennung<br/>app/converter.py]
-        C --> D[Umwandlung<br/>converter/xml_to_xlsx.py]
-        E[(Feldkonfiguration<br/>xml_to_xlsx_config.json)] --> D
+    A[Abacus-Prozess<br/>„Webservice Aufruf ausführen“] -- "POST /werkzeug<br/>Datei im Body" --> M
+    subgraph T[Abacus Toolbox]
+        M[main.py<br/>setzt alles zusammen] --> K[core/<br/>API-Key · Datei lesen · Fehler · Einstellungen]
+        M --> F[modules/fsm_xlsx<br/>FSM XML → Excel]
+        M --> E[modules/encoding<br/>Zeichensatz]
+        M --> N[modules/…<br/>nächstes Werkzeug]
     end
-    D -- ".xlsx" --> A
+    F -- ".xlsx" --> A
 ```
 
-Der Service besteht aus drei Schichten:
-
-| Schicht | Datei | Aufgabe |
+| Teil | Ort | Aufgabe |
 |---|---|---|
-| **REST-API** | `app/main.py` | HTTP-Endpunkte, API-Key-Prüfung, Grössenlimit, Antwort als Excel-Download |
-| **Adapter** | `app/converter.py` | XML sicher prüfen (Schutz vor XXE), Typ erkennen (`timeEfforts`/`expenses`), Konfiguration laden, Umwandlung im Speicher aufrufen |
-| **Konverter** | `converter/xml_to_xlsx.py` | Die eigentliche Umwandlungslogik (XML lesen, Felder gemäss Konfiguration auslesen, Excel schreiben). Funktioniert auch eigenständig als Kommandozeilen-Programm. |
+| **Zusammenbau** | `app/main.py` | Erstellt die App, hängt die aktiven Werkzeuge ein, allgemeine Endpunkte (`/health`, `/modules`, `/debug/echo`) |
+| **Kern** | `app/core/` | Gemeinsam für alle Werkzeuge: Einstellungen, API-Key-Prüfung, Datei aus dem Request lesen (roh oder Formular, mit Grössenlimit), Datei zurückgeben, einheitliche Fehlermeldungen |
+| **Werkzeuge** | `app/modules/<name>/` | Ein Ordner pro Werkzeug mit `router.py` (Endpunkte) und der eigentlichen Logik |
+| **FSM-Konverter** | `converter/xml_to_xlsx.py` | Umwandlungslogik des FSM-Werkzeugs, auch eigenständig als Kommandozeilen-Tool nutzbar |
 
 Technik: Python 3.12, [FastAPI](https://fastapi.tiangolo.com/), [openpyxl](https://openpyxl.readthedocs.io/),
 [defusedxml](https://github.com/tiran/defusedxml). Der gleiche Code läuft in allen Betriebsvarianten
-(Docker, Windows-Dienst, AWS Lambda).
+(Windows-Dienst, Docker, AWS Lambda).
 
 ## Repository-Struktur
 
 ```
 .
-├── app/                        REST-API
-│   ├── main.py                   Endpunkte
-│   └── converter.py              Adapter zwischen API und Konverter
-├── converter/                  Umwandlungslogik
-│   ├── xml_to_xlsx.py            Konverter (auch als Kommandozeilen-Tool nutzbar)
-│   └── xml_to_xlsx_config.json   Feldkonfiguration (welche Spalten)
-├── samples/                    Anonymisierte Beispiel-XMLs (keine echten Daten)
-├── docs/                       Anleitungen je Betriebsvariante, Abacus, Fehlersuche
-├── windows/                    Betrieb als Windows-Dienst (ohne Docker)
-│   ├── service.py                Dienst-Programm
-│   ├── build-windows-service.ps1 baut die .exe
-│   ├── install-service.ps1       installiert/aktualisiert den Dienst
-│   ├── INSTALLATION.txt          Kurzanleitung, liegt in der ZIP für den Kundenserver
-│   └── uninstall-service.ps1
-├── Dockerfile                  Container (Docker, eigene Server, Azure Container Apps …)
-├── docker-compose.yml          lokaler Start mit Docker
-├── Dockerfile.lambda           Container-Variante für AWS Lambda
-├── deploy-aws.ps1              Bereitstellung auf AWS Lambda (Zürich)
-├── remove-aws.ps1              AWS-Ressourcen wieder entfernen
-├── test.ps1                    schickt alle Beispiel-XMLs an einen laufenden Service
-└── requirements.txt            Python-Abhängigkeiten
+├── app/
+│   ├── main.py                    Zusammenbau, allgemeine Endpunkte
+│   ├── core/                      gemeinsame Bausteine
+│   │   ├── settings.py              Einstellungen (Umgebungsvariablen), Version
+│   │   ├── security.py              API-Key-Prüfung
+│   │   └── http.py                  Datei lesen/zurückgeben, ToolError
+│   └── modules/                   Werkzeuge
+│       ├── __init__.py              Verzeichnis der verfügbaren Werkzeuge
+│       ├── fsm_xlsx/                FSM XML → Excel
+│       └── encoding/                Zeichensatz umwandeln
+├── converter/                     FSM-Konverter + Feldkonfiguration
+│   ├── xml_to_xlsx.py
+│   └── xml_to_xlsx_config.json
+├── samples/                       Anonymisierte Beispiel-XMLs (keine echten Daten)
+├── docs/                          Anleitungen: Werkzeuge, Betrieb, Abacus, Fehlersuche, neues Werkzeug
+├── windows/                       Betrieb als Windows-Dienst (ohne Docker)
+│   ├── service.py                   Dienst-Programm
+│   ├── build-windows-service.ps1    baut .exe + Installations-ZIP
+│   ├── install-service.ps1          installiert/aktualisiert den Dienst (prüft vorher den Port)
+│   ├── uninstall-service.ps1
+│   └── INSTALLATION.txt             Kurzanleitung, liegt in der ZIP
+├── Dockerfile                     Container (Docker, Linux-Server, Azure Container Apps …)
+├── docker-compose.yml             lokaler Start mit Docker
+├── Dockerfile.lambda              Container-Variante für AWS Lambda
+├── deploy-aws.ps1 / remove-aws.ps1  Bereitstellung auf AWS Lambda (Zürich) / wieder entfernen
+├── test.ps1                       schickt alle Beispiel-XMLs an das FSM-Werkzeug
+└── requirements.txt               Python-Abhängigkeiten
 ```
 
 ## Betriebsvarianten
 
 | Variante | Geeignet wenn … | Kosten | Anleitung |
 |---|---|---|---|
-| **Windows-Dienst** | Abacus läuft auf einem Windows-Server (z.B. Azure-VM). Der Service läuft auf demselben Server und ist nur lokal erreichbar. | keine | [docs/betrieb-windows-dienst.md](docs/betrieb-windows-dienst.md) |
+| **Windows-Dienst** | Abacus läuft auf einem Windows-Server (z.B. Azure-VM). Der Dienst läuft auf demselben Server und ist nur lokal erreichbar. | keine | [docs/betrieb-windows-dienst.md](docs/betrieb-windows-dienst.md) |
 | **Docker** | Test auf dem eigenen Rechner, Linux-Server oder eine Container-Plattform (z.B. Azure Container Apps) | je nach Plattform | [docs/betrieb-docker.md](docs/betrieb-docker.md) |
 | **AWS Lambda** | Der Service soll zentral im Internet erreichbar sein (HTTPS + API-Key), ohne eigenen Server | wenige Rappen pro Monat | [docs/betrieb-aws-lambda.md](docs/betrieb-aws-lambda.md) |
 
-Die Einrichtung in Abacus ist für alle Varianten gleich, nur die Adresse unterscheidet sich:
+Die Einrichtung in Abacus ist für alle Varianten und Werkzeuge gleich, nur die Adresse unterscheidet sich:
 [docs/abacus.md](docs/abacus.md).
 
 ## Schnellstart (lokal mit Docker)
@@ -109,133 +119,79 @@ docker compose up -d --build
 
 Danach:
 
-- **Swagger-Oberfläche:** <http://localhost:8000/docs>. Bei `POST /convert` auf *Try it out*, XML-Datei wählen, *Execute* und die Excel-Datei herunterladen.
-- **Healthcheck:** <http://localhost:8000/health>
-- **Alle Beispiel-XMLs umwandeln:** `.\test.ps1` → Ergebnisse in `output\`
+- **Swagger-Oberfläche mit allen Werkzeugen:** <http://localhost:8000/docs>. Dort lässt sich jedes Werkzeug direkt im Browser ausprobieren.
+- **Healthcheck:** <http://localhost:8000/health> · **Aktive Werkzeuge:** <http://localhost:8000/modules>
+- **Beispiel-XMLs in Excel umwandeln:** `.\test.ps1` → Ergebnisse in `output\`
 - **Einzeln per Kommandozeile** (in PowerShell `curl.exe`, nicht `curl`):
   ```powershell
   curl.exe --data-binary "@samples\1001_20260911081138_timeEfforts.xml" `
-    "http://localhost:8000/convert/raw?filename=1001_20260911081138_timeEfforts.xml" -o ergebnis.xlsx
+    "http://localhost:8000/fsm/xml-to-xlsx?filename=1001_20260911081138_timeEfforts.xml" -o ergebnis.xlsx
   ```
 
 Stoppen: `docker compose down` · Logs: `docker compose logs -f`
 
-## API
+## API: gemeinsame Regeln
 
-Alle Endpunkte sind zusätzlich interaktiv unter `/docs` (Swagger) beschrieben.
+Alle Werkzeuge funktionieren nach demselben Muster. Die Einzelheiten stehen in der Anleitung des jeweiligen
+Werkzeugs und interaktiv unter `/docs`.
 
-### `POST /convert/raw` für Abacus
-
-XML direkt als Request-Body. Das ist die Variante für den Abacus-Baustein und für andere Systeme.
-
-| | |
-|---|---|
-| Body | Inhalt der XML-Datei (Content-Type beliebig, empfohlen `application/xml`) |
-| Query `filename` | optional. Name der XML-Datei, bestimmt den Namen der Excel-Datei und hilft bei der Typ-Erkennung |
-| Query `type` | optional. `timeEfforts` oder `expenses`; ohne Angabe automatisch |
-| Header `X-API-Key` | nur nötig, wenn ein API-Key konfiguriert ist |
-
-Falls der Aufrufer die Datei doch als Formular (`multipart/form-data`) schickt, wird die erste Datei daraus verwendet.
-
-### `POST /convert` für Formular-Uploads
-
-`multipart/form-data` mit dem Feld `file`. Das ist die Variante für Browser, Swagger-UI und `curl -F`. Query `type` wie oben.
-
-### Antwort
-
-- **200**: Excel-Datei (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`)
-  - `Content-Disposition`: Dateiname = Name der XML-Datei mit Endung `.xlsx`
-  - `X-Record-Type`: `timeEfforts` oder `expenses`
-  - `X-Row-Count`: Anzahl Zeilen
-- **Fehler** als JSON `{"detail": "…"}`:
+- **Anfrage:** `POST`, die Datei als **Request-Body** (so arbeitet der Abacus-Baustein). Wird die Datei stattdessen als
+  Formular (`multipart/form-data`) geschickt, nimmt der Service die erste Datei daraus.
+- **Query `filename`:** Name der Eingabedatei. Die Antwort bekommt denselben Namen mit passender Endung.
+- **Header `X-API-Key`:** nur nötig, wenn ein API-Key eingerichtet ist.
+- **Antwort bei Erfolg:** `200` mit der Ergebnis-Datei als Download (`Content-Disposition` mit Dateiname) und
+  werkzeugspezifischen `X-…`-Headern.
+- **Antwort bei Fehler:** JSON `{"detail": "…"}` mit verständlicher Meldung:
 
 | Code | Bedeutung |
 |---|---|
-| 400 | Body leer, kein gültiges XML, unerlaubte XML-Konstrukte (DTD/Entities) oder unbekannter `type` |
+| 400 | Anfrage unbrauchbar: Body leer, ungültige Datei, ungültiger Parameter |
 | 401 | API-Key fehlt oder ist falsch |
+| 404 | Adresse falsch oder Werkzeug in dieser Installation nicht aktiviert (siehe `/modules`) |
 | 413 | Datei grösser als erlaubt (`MAX_UPLOAD_MB`) |
-| 422 | XML hat kein `<data>`-Element oder enthält keine Zeiterfassungen/Spesen |
-| 500 | Feldkonfiguration fehlerhaft |
+| 422 | Datei gültig, aber fachlich nicht verarbeitbar (z.B. keine Einträge gefunden) |
+| 500 | Konfigurationsfehler auf dem Server |
 
-### Weitere Endpunkte
+### Allgemeine Endpunkte
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET | `/health` | Healthcheck, zeigt die verwendete Konfiguration |
-| GET/POST | `/debug/echo` | Fehlersuche: zeigt als JSON, was beim Service ankommt (Header, Body-Grösse, Anfang des Bodys). Geschützt wie `/convert`. |
+| GET | `/health` | Healthcheck: Version, aktive Werkzeuge |
+| GET | `/modules` | Aktive Werkzeuge mit Beschreibung und Endpunkten |
+| GET/POST | `/debug/echo` | Fehlersuche: zeigt als JSON, was ankommt (Header, Grösse, Anfang des Bodys). Geschützt wie die Werkzeuge |
 | GET | `/docs` | Swagger-Oberfläche |
 
-### Typ-Erkennung
+### Kompatibilität mit Version 1
 
-1. Parameter `type`, falls angegeben
-2. Dateiname: enthält `expenses` → Spesen, enthält `timeEfforts` → Zeiterfassungen
-3. Inhalt: gibt es `<activities>/<expenses>`, aber keine `<timeEfforts>` → Spesen, sonst Zeiterfassungen
+Die Adressen der ersten Version funktionieren weiterhin, bestehende Abacus-Prozesse müssen nicht angepasst werden:
 
-## Feldkonfiguration
-
-`converter/xml_to_xlsx_config.json` legt pro Typ fest, welche Spalten die Excel-Datei bekommt und woher die Werte stammen.
-
-```json
-{
-  "profiles": {
-    "timeEfforts": [
-      {"name": "EventId",         "context": "root",       "path": "eventID"},
-      {"name": "Subject",         "context": "data",       "path": "subject"},
-      {"name": "ResponsibleCode", "context": "activity",   "path": "responsibles/code", "multiple": true},
-      {"name": "StartDateTime",   "context": "timeEffort", "path": "startDateTime"}
-    ],
-    "expenses": [
-      {"name": "ExpenseQuantity", "context": "expense",    "path": "udfValues/value", "index": 0}
-    ]
-  }
-}
-```
-
-| Feld | Bedeutung |
+| Alt (v1) | Neu (v2) |
 |---|---|
-| `name` | Spaltenüberschrift in Excel |
-| `context` | Ebene im XML, von der aus `path` gesucht wird: `root` (ganze Nachricht), `data` (Serviceauftrag), `activity` (Aktivität), `timeEffort` bzw. `expense` (die einzelne Zeile) |
-| `path` | Pfad zum Element, mit `/` getrennt, z.B. `businessPartner/code` |
-| `multiple` | optional `true`: alle Vorkommen mit `; ` verbunden (z.B. mehrere Verantwortliche) |
-| `index` | optional Zahl ab 0: nur das n-te Vorkommen (z.B. erster UDF-Wert) |
-
-Pro `<timeEfforts>`- bzw. `<expenses>`-Element entsteht eine Zeile. Die erste Spalte `FileType` enthält immer den Typ.
-Fehlt die Konfigurationsdatei, werden die im Konverter eingebauten Standardfelder verwendet.
-
-Wo die Konfiguration im Betrieb liegt und ob Änderungen sofort wirken, hängt von der Variante ab:
-
-| Variante | Datei | Änderung wirkt |
-|---|---|---|
-| Docker (compose) | `converter/xml_to_xlsx_config.json` (eingebunden) | sofort |
-| Windows-Dienst | `C:\Program Files\FsmXmlToXlsx\xml_to_xlsx_config.json` | sofort |
-| AWS Lambda | im Image eingebaut | nach erneutem `deploy-aws.ps1` |
-
-### Kommandozeilen-Variante
-
-Der Konverter funktioniert auch ohne Service: `converter/xml_to_xlsx.py` wandelt alle `.xml`-Dateien im
-eigenen Ordner in `.xlsx` um (liest die Konfiguration aus demselben Ordner). Mit PyInstaller lässt er sich zu einer
-eigenständigen `.exe` packen (`pyinstaller --onefile xml_to_xlsx.py`).
+| `POST /convert/raw` | `POST /fsm/xml-to-xlsx` |
+| `POST /convert` | `POST /fsm/xml-to-xlsx/upload` |
 
 ## Einstellungen
 
-Umgebungsvariablen für Docker und AWS (beim Windows-Dienst stehen sie in `settings.json`, siehe
-[Anleitung](docs/betrieb-windows-dienst.md)):
+Umgebungsvariablen für Docker und AWS. Beim Windows-Dienst stehen die gleichen Werte in `settings.json`, siehe
+[Anleitung](docs/betrieb-windows-dienst.md#einstellungen-settingsjson).
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
-| `API_KEY` | leer | Wenn gesetzt, muss jeder Aufruf von `/convert*` und `/debug/echo` den Header `X-API-Key` mit diesem Wert mitschicken |
-| `MAX_UPLOAD_MB` | `20` (AWS: `5`) | Maximale Grösse der XML-Datei |
+| `API_KEY` | leer | Wenn gesetzt, muss jeder Aufruf eines Werkzeugs und von `/debug/echo` den Header `X-API-Key` mit diesem Wert mitschicken |
+| `ENABLED_MODULES` | leer = alle | Aktive Werkzeuge, kommagetrennt, z.B. `fsm_xlsx,encoding`. Nicht aktivierte Werkzeuge sind nicht erreichbar (404) und erscheinen nicht in `/docs` |
+| `MAX_UPLOAD_MB` | `20` (AWS: `5`) | Maximale Grösse einer Datei |
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, … |
-| `CONFIG_PATH` | `/config/xml_to_xlsx_config.json` | Pfad zur Feldkonfiguration |
+| `CONFIG_PATH` | `/config/xml_to_xlsx_config.json` | Feldkonfiguration des FSM-Werkzeugs |
 
 ## Sicherheit und Datenschutz
 
-- **Personendaten:** Die XML-Dateien enthalten Zeiten und Spesen von Mitarbeitenden sowie Kundenadressen.
-  Der Service **speichert keine Inhalte**: XML und Excel existieren nur während der Anfrage im Arbeitsspeicher.
-  In den Logs stehen nur Dateiname, Typ, Zeilenzahl und technische Header, keine Inhalte.
-- **XML-Angriffe:** Jede Datei wird zuerst mit `defusedxml` geprüft. DTDs und Entities (XXE, „Billion Laughs“) werden abgelehnt.
-- **Zugriffsschutz:** Optionaler API-Key (Header `X-API-Key`, zeitkonstanter Vergleich). Pflicht, sobald der Service
-  über das Netzwerk erreichbar ist. Im Internet nur über HTTPS betreiben (bei AWS automatisch).
+- **Personendaten:** Die verarbeiteten Dateien können Personendaten enthalten, z.B. Zeiten und Spesen von
+  Mitarbeitenden. Der Service **speichert keine Inhalte**: Dateien existieren nur während der Anfrage im
+  Arbeitsspeicher. In den Logs stehen nur Dateiname, Grösse, Ergebnis-Kennzahlen und technische Header.
+- **XML-Angriffe:** XML wird zuerst mit `defusedxml` geprüft. DTDs und Entities (XXE, „Billion Laughs“) werden abgelehnt.
+- **Zugriffsschutz:** Optionaler API-Key (Header `X-API-Key`, zeitkonstanter Vergleich), gilt für alle Werkzeuge.
+  Pflicht, sobald der Service über das Netzwerk erreichbar ist. Im Internet nur über HTTPS betreiben (bei AWS automatisch).
+- **Nur freigeschaltete Werkzeuge:** Mit `ENABLED_MODULES` sind nur die Werkzeuge erreichbar, die der Kunde bekommt.
 - **Windows-Dienst:** hört standardmässig nur auf `127.0.0.1`, ist also von aussen nicht erreichbar.
 - **Docker:** Container läuft als Benutzer ohne Root-Rechte.
 - **Standort:** Die AWS-Variante läuft in der Region Zürich (`eu-central-2`), die Daten verlassen die Schweiz nicht.
@@ -243,8 +199,8 @@ Umgebungsvariablen für Docker und AWS (beim Windows-Dienst stehen sie in `setti
 
 ## Weiterführende Anleitungen
 
+- Werkzeuge: [FSM XML → Excel](docs/werkzeug-fsm-xlsx.md) · [Zeichensatz umwandeln](docs/werkzeug-encoding.md)
 - [Einrichtung in Abacus](docs/abacus.md)
-- [Betrieb als Windows-Dienst](docs/betrieb-windows-dienst.md)
-- [Betrieb mit Docker](docs/betrieb-docker.md)
-- [Betrieb auf AWS Lambda](docs/betrieb-aws-lambda.md)
+- Betrieb: [Windows-Dienst](docs/betrieb-windows-dienst.md) · [Docker](docs/betrieb-docker.md) · [AWS Lambda](docs/betrieb-aws-lambda.md)
 - [Fehlersuche](docs/fehlersuche.md)
+- [Neues Werkzeug hinzufügen](docs/neues-werkzeug.md)
