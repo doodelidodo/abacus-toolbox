@@ -51,7 +51,8 @@ Fehlermeldungen mit `explicit deny in a service control policy` deuten immer auf
 ## Bereitstellen und aktualisieren
 
 ```powershell
-cd <Repository>
+git clone https://github.com/doodelidodo/fsm-xml-to-xlsx.git
+cd fsm-xml-to-xlsx
 powershell -ExecutionPolicy Bypass -File .\deploy-aws.ps1
 ```
 

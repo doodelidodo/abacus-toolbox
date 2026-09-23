@@ -17,10 +17,11 @@ flowchart LR
 
 ## 1. Bauen (einmalig pro Version, auf einem Entwicklungsrechner)
 
-Voraussetzung: Python 3.11 oder neuer (`py --version`).
+Voraussetzung: Python 3.11 oder neuer (`py --version`) und Git.
 
 ```powershell
-cd <Repository>\windows
+git clone https://github.com/doodelidodo/fsm-xml-to-xlsx.git
+cd fsm-xml-to-xlsx\windows
 powershell -ExecutionPolicy Bypass -File .\build-windows-service.ps1
 ```
 
@@ -36,14 +37,19 @@ Schnelltest im Konsolenfenster, beenden mit Ctrl+C:
 Läuft bereits etwas auf Port 8000 (z.B. der Docker-Container: `docker compose down`), vorher stoppen oder in
 `dist\fsm-xml-service\settings.json` einen anderen Port eintragen.
 
+Am Ende erzeugt das Script zusätzlich das Installationspaket
+**`windows\release\fsm-xml-service-<version>.zip`** (Programm, Installations-Scripts, Kurzanleitung).
+
 ## 2. Auf den Server bringen
 
-Auf den Zielserver kopieren, beide in denselben Ordner:
+Nur die ZIP-Datei auf den Kundenserver kopieren und entpacken, z.B. nach `C:\Install\fsm-xml-service`:
 
 ```
-<beliebiger Ordner>\
-├── dist\fsm-xml-service\      (ganzer Ordner)
-└── install-service.ps1
+C:\Install\fsm-xml-service\
+├── dist\fsm-xml-service\      Programm
+├── install-service.ps1
+├── uninstall-service.ps1
+└── INSTALLATION.txt            Kurzanleitung
 ```
 
 ## 3. Installieren
@@ -51,7 +57,7 @@ Auf den Zielserver kopieren, beide in denselben Ordner:
 PowerShell **als Administrator** öffnen:
 
 ```powershell
-cd <beliebiger Ordner>
+cd C:\Install\fsm-xml-service
 powershell -ExecutionPolicy Bypass -File .\install-service.ps1
 ```
 
@@ -107,7 +113,7 @@ Restart-Service FsmXmlToXlsx
 | Neu starten | `Restart-Service FsmXmlToXlsx` (als Administrator) |
 | Logs | `C:\Program Files\FsmXmlToXlsx\logs\service.log` (rotiert, max. 6 × 5 MB) |
 | Startfehler | zusätzlich Ereignisanzeige → Windows-Protokolle → Anwendung |
-| Update | neue Version bauen, `dist\fsm-xml-service` + `install-service.ps1` kopieren, `install-service.ps1` erneut ausführen |
+| Update | neue ZIP bauen, auf dem Server entpacken, `install-service.ps1` erneut ausführen |
 | Entfernen | `uninstall-service.ps1` (als Administrator); mit `-RemoveFiles` auch den Programmordner |
 
 ## Hinweise

@@ -7,6 +7,8 @@ Der Service nimmt eine XML-Datei per HTTP entgegen und schickt die fertige Excel
 zurück. Er ist dafür gebaut, aus einem **Abacus-Prozess** (Baustein „Webservice Aufruf ausführen“)
 aufgerufen zu werden, funktioniert aber mit jedem HTTP-Client.
 
+**Repository:** <https://github.com/doodelidodo/fsm-xml-to-xlsx>
+
 ```
 Abacus / Client  ──POST XML──►  FSM XML → Excel  ──►  .xlsx zurück (gleicher Dateiname)
 ```
@@ -100,7 +102,7 @@ Die Einrichtung in Abacus ist für alle Varianten gleich, nur die Adresse unters
 Voraussetzung: [Docker Desktop](https://www.docker.com/products/docker-desktop/) läuft.
 
 ```powershell
-git clone <repository-url> fsm-xml-to-xlsx
+git clone https://github.com/doodelidodo/fsm-xml-to-xlsx.git
 cd fsm-xml-to-xlsx
 docker compose up -d --build
 ```

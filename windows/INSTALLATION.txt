@@ -35,4 +35,6 @@ Danach:
                    (Einstellungen und Feldkonfig bleiben erhalten)
   Entfernen        powershell -ExecutionPolicy Bypass -File .\uninstall-service.ps1 [-RemoveFiles]
 
-Ausführliche Doku: README.md und docs\ im Repository.
+Ausführliche Doku, Quellcode und neue Versionen:
+  https://github.com/doodelidodo/fsm-xml-to-xlsx
+  (Windows-Dienst: https://github.com/doodelidodo/fsm-xml-to-xlsx/blob/main/docs/betrieb-windows-dienst.md)

@@ -5,7 +5,8 @@ Geeignet zum Testen auf dem eigenen Rechner, für Linux-Server und für Containe
 ## Lokal mit Docker Desktop
 
 ```powershell
-cd <Repository>
+git clone https://github.com/doodelidodo/fsm-xml-to-xlsx.git
+cd fsm-xml-to-xlsx
 docker compose up -d --build
 ```
 
