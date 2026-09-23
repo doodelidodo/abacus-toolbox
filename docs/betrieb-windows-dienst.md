@@ -63,10 +63,11 @@ powershell -ExecutionPolicy Bypass -File .\install-service.ps1
 
 Das Script
 
-1. kopiert das Programm nach `C:\Program Files\FsmXmlToXlsx`,
-2. legt `settings.json` an (bestehende Einstellungen und Feldkonfiguration bleiben bei einem Update erhalten),
-3. richtet den Dienst **`FsmXmlToXlsx`** („FSM XML to XLSX Service“) mit automatischem Start und automatischem Neustart bei Fehlern ein,
-4. startet ihn und prüft `http://localhost:<port>/health`.
+1. prüft, ob der Port frei ist. Ist er von einem anderen Programm belegt, bricht es ab, **bevor** etwas geändert wird,
+2. kopiert das Programm nach `C:\Program Files\FsmXmlToXlsx`,
+3. legt `settings.json` an (bestehende Einstellungen und Feldkonfiguration bleiben bei einem Update erhalten),
+4. richtet den Dienst **`FsmXmlToXlsx`** („FSM XML to XLSX Service“) mit automatischem Start und automatischem Neustart bei Fehlern ein,
+5. startet ihn und prüft `http://localhost:<port>/health`.
 
 Optionen:
 
@@ -76,6 +77,16 @@ Optionen:
 | `-ApiKey "…"` | API-Key setzen (Header `X-API-Key` wird Pflicht) |
 | `-ListenAll` | auch von anderen Rechnern erreichbar (`0.0.0.0`) und Firewall-Regel anlegen. **Nur mit `-ApiKey` verwenden.** |
 | `-InstallDir "D:\Apps\FsmXmlToXlsx"` | anderer Installationsordner |
+
+### Port vorher selbst prüfen
+
+```powershell
+Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue |
+  Select-Object LocalAddress, LocalPort, OwningProcess, @{n='Programm';e={(Get-Process -Id $_.OwningProcess).ProcessName}}
+```
+
+Keine Ausgabe heisst: frei. Programm `System` (PID 4) bedeutet meist IIS oder eine andere Web-Anwendung über den
+Windows-HTTP-Dienst. Dann einen anderen Port wählen (`-Port 8765`) und in Abacus entsprechend eintragen.
 
 ## Einstellungen: `settings.json`
 

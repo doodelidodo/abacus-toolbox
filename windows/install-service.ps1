@@ -32,6 +32,28 @@ if (-not $isAdmin) { throw "Bitte PowerShell als Administrator starten (Rechtskl
 if (-not (Test-Path (Join-Path $Source "fsm-xml-service.exe"))) { throw "Build nicht gefunden: $Source. Zuerst build-windows-service.ps1 ausführen." }
 
 $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+
+# --- Port prüfen, bevor irgendetwas geändert wird -------------------------------
+$checkPort = $Port
+if ($checkPort -le 0) {
+    $checkPort = 8000
+    $sp = Join-Path $InstallDir "settings.json"
+    if (Test-Path $sp) { try { $checkPort = [int]((Get-Content $sp -Raw | ConvertFrom-Json).port) } catch { } }
+}
+$ownPid = $null
+if ($existing -and $existing.Status -eq "Running") {
+    $ownPid = (Get-CimInstance Win32_Service -Filter "Name='$ServiceName'").ProcessId
+}
+$listeners = @(Get-NetTCPConnection -LocalPort $checkPort -State Listen -ErrorAction SilentlyContinue |
+    Where-Object { $_.OwningProcess -ne $ownPid })
+if ($listeners.Count -gt 0) {
+    $names = ($listeners | ForEach-Object {
+        $proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
+        "$($_.LocalAddress):$($_.LocalPort) -> $($proc.ProcessName) (PID $($_.OwningProcess))"
+    }) -join "`n  "
+    throw "Port $checkPort ist bereits belegt:`n  $names`nEs wurde nichts geändert. Bitte einen freien Port wählen, z.B.: .\install-service.ps1 -Port 8765"
+}
+Write-Host "Port $checkPort ist frei." -ForegroundColor Green
 if ($existing -and $existing.Status -ne "Stopped") {
     Step "Dienst stoppen (Update)"
     Stop-Service -Name $ServiceName -Force

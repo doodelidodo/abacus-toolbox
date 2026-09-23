@@ -5,7 +5,13 @@ Voraussetzung: Windows Server / Windows 10+, Administratorrechte. Python ist NIC
 
 1. ZIP auf den Server kopieren und entpacken, z.B. nach C:\Install\fsm-xml-service
 
-2. PowerShell als Administrator öffnen:
+2. Optional: prüfen, ob Port 8000 frei ist (keine Ausgabe = frei):
+
+     Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+
+   Das Installations-Script prüft das ebenfalls und bricht bei belegtem Port ab, ohne etwas zu ändern.
+
+3. PowerShell als Administrator öffnen:
 
      cd C:\Install\fsm-xml-service
      powershell -ExecutionPolicy Bypass -File .\install-service.ps1
@@ -17,7 +23,7 @@ Voraussetzung: Windows Server / Windows 10+, Administratorrechte. Python ist NIC
      -ApiKey "langer-geheimer-key"    API-Key verlangen (Header X-API-Key)
      -ListenAll                       auch von anderen Rechnern erreichbar (nur mit -ApiKey!)
 
-3. In Abacus (Baustein "Webservice Aufruf ausführen"):
+4. In Abacus (Baustein "Webservice Aufruf ausführen"):
      Method       POST
      URI          http://localhost:8000/convert/raw
      Headers      Content-Type: application/xml   (+ X-API-Key: ..., falls gesetzt)
