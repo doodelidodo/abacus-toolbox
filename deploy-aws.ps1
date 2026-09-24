@@ -18,9 +18,9 @@
 #>
 param(
     [string]$Region = "eu-central-2",            # Zürich
-    [string]$FunctionName = "fsm-xml-to-xlsx",
-    [string]$RepositoryName = "fsm-xml-to-xlsx",
-    [string]$RoleName = "fsm-xml-to-xlsx-lambda-role",
+    [string]$FunctionName = "abacus-toolbox",
+    [string]$RepositoryName = "abacus-toolbox",
+    [string]$RoleName = "abacus-toolbox-lambda-role",
     [string]$ApiKey = "",
     [string]$Modules = $null,                    # z.B. "fsm_xlsx,encoding"; leer = alle; ohne Angabe = unverändert
     [string]$Profile = "",
@@ -34,7 +34,7 @@ $ProgressPreference = "SilentlyContinue"
 
 $ServiceDir = $PSScriptRoot
 $BuildContext = $ServiceDir                                            # Repository-Hauptverzeichnis
-$TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "fsm-deploy"
+$TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "abacus-toolbox-deploy"
 New-Item -ItemType Directory -Force -Path $TmpDir | Out-Null
 
 function Step($text) { Write-Host "`n==> $text" -ForegroundColor Cyan }

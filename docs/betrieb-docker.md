@@ -5,8 +5,8 @@ Geeignet zum Testen auf dem eigenen Rechner, für Linux-Server und für Containe
 ## Lokal mit Docker Desktop
 
 ```powershell
-git clone https://github.com/doodelidodo/fsm-xml-to-xlsx.git
-cd fsm-xml-to-xlsx
+git clone https://github.com/doodelidodo/abacus-toolbox.git
+cd abacus-toolbox
 docker compose up -d --build
 ```
 
@@ -45,7 +45,7 @@ Docker veröffentlicht Port 8000 auf allen Netzwerkschnittstellen. Damit ein and
 zugreifen kann, unter Windows den Port freigeben (PowerShell als Administrator):
 
 ```powershell
-New-NetFirewallRule -DisplayName "fsm-service 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
+New-NetFirewallRule -DisplayName "abacus-toolbox 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
 ```
 
 In diesem Fall immer einen API-Key setzen.

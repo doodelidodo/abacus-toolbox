@@ -7,8 +7,8 @@
    [Einrichtung in Abacus](abacus.md). `body_length` muss grösser als 0 sein.
 3. **Logs ansehen:**
    - Docker: `docker compose logs -f`
-   - Windows-Dienst: `C:\Program Files\FsmXmlToXlsx\logs\service.log`
-   - AWS: `aws logs tail /aws/lambda/fsm-xml-to-xlsx --follow --region eu-central-2`
+   - Windows-Dienst: `C:\Program Files\AbacusToolbox\logs\service.log`
+   - AWS: `aws logs tail /aws/lambda/abacus-toolbox --follow --region eu-central-2`
 
    Pro Aufruf wird protokolliert, was ankam (Pfad, Content-Type, Grösse, Absender) und was erzeugt wurde.
 4. **Ist das Werkzeug aktiv?** `…/modules` zeigt die aktiven Werkzeuge mit ihren Endpunkten.
@@ -36,8 +36,8 @@ Meldungen der einzelnen Werkzeuge stehen zusätzlich in deren Anleitung:
 | Problem | Lösung |
 |---|---|
 | Dienst startet nicht | `logs\service.log` und Ereignisanzeige → Windows-Protokolle → Anwendung prüfen |
-| Port belegt | Anderen Port: `install-service.ps1 -Port 8001` bzw. `settings.json` anpassen und `Restart-Service FsmXmlToXlsx` |
-| `fsm-xml-service.exe` per Doppelklick schliesst sofort | Normal. Die Datei ist ein Dienst. Zum Testen `fsm-xml-service.exe run` in einer Konsole |
+| Port belegt | Anderen Port: `install-service.ps1 -Port 8001` bzw. `settings.json` anpassen und `Restart-Service AbacusToolbox` |
+| `abacus-toolbox.exe` per Doppelklick schliesst sofort | Normal. Die Datei ist ein Dienst. Zum Testen `abacus-toolbox.exe run` in einer Konsole |
 | Virenscanner blockiert die .exe | Installationsordner freigeben oder .exe signieren |
 | Build: `pip install` schlägt fehl | Oft ist die Python-Version zu neu für ein Paket. Python 3.12 oder 3.13 installieren und mit `py -3.12` bauen |
 

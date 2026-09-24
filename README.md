@@ -7,7 +7,7 @@ mit mehreren Endpunkten. Ein neues Werkzeug ist ein neues Modul, Installation un
 Aufgerufen wird der Service aus einem **Abacus-Prozess** mit dem Baustein „Webservice Aufruf ausführen“:
 Datei als Request-Body schicken, Ergebnis als Datei zurückbekommen. Er funktioniert mit jedem HTTP-Client.
 
-**Repository:** <https://github.com/doodelidodo/fsm-xml-to-xlsx>
+**Repository:** <https://github.com/doodelidodo/abacus-toolbox>
 
 ```
 Abacus / Client  ──POST Datei──►  Abacus Toolbox  /<werkzeug>  ──►  Ergebnis-Datei zurück
@@ -112,8 +112,8 @@ Die Einrichtung in Abacus ist für alle Varianten und Werkzeuge gleich, nur die 
 Voraussetzung: [Docker Desktop](https://www.docker.com/products/docker-desktop/) läuft.
 
 ```powershell
-git clone https://github.com/doodelidodo/fsm-xml-to-xlsx.git
-cd fsm-xml-to-xlsx
+git clone https://github.com/doodelidodo/abacus-toolbox.git
+cd abacus-toolbox
 docker compose up -d --build
 ```
 
@@ -169,6 +169,9 @@ Die Adressen der ersten Version funktionieren weiterhin, bestehende Abacus-Proze
 |---|---|
 | `POST /convert/raw` | `POST /fsm/xml-to-xlsx` |
 | `POST /convert` | `POST /fsm/xml-to-xlsx/upload` |
+
+Der Windows-Dienst heisst ab Version 2 `AbacusToolbox` (vorher `FsmXmlToXlsx`); `install-service.ps1` übernimmt
+eine bestehende Installation automatisch, siehe [Windows-Dienst](docs/betrieb-windows-dienst.md#umstieg-von-version-1-dienst-fsmxmltoxlsx).
 
 ## Einstellungen
 

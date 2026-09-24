@@ -1,13 +1,13 @@
 ﻿<#
 .SYNOPSIS
-    Entfernt den Windows-Dienst FsmXmlToXlsx (als Administrator ausführen).
+    Entfernt den Windows-Dienst AbacusToolbox (als Administrator ausführen).
     -RemoveFiles löscht zusätzlich den Programmordner (inkl. settings.json und Logs).
 #>
 param(
-    [string]$InstallDir = "C:\Program Files\FsmXmlToXlsx",
+    [string]$InstallDir = "C:\Program Files\AbacusToolbox",
     [switch]$RemoveFiles
 )
-$ServiceName = "FsmXmlToXlsx"
+$ServiceName = "AbacusToolbox"
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) { throw "Bitte PowerShell als Administrator starten." }
@@ -18,7 +18,7 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     Write-Host "Dienst entfernt."
 } else { Write-Host "Dienst war nicht installiert." }
 
-Get-NetFirewallRule -DisplayName "FSM XML to XLSX (*" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+Get-NetFirewallRule -DisplayName "Abacus Toolbox (*" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 
 if ($RemoveFiles -and (Test-Path $InstallDir)) {
     Remove-Item $InstallDir -Recurse -Force

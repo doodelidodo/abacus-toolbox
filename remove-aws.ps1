@@ -4,9 +4,9 @@
 #>
 param(
     [string]$Region = "eu-central-2",
-    [string]$FunctionName = "fsm-xml-to-xlsx",
-    [string]$RepositoryName = "fsm-xml-to-xlsx",
-    [string]$RoleName = "fsm-xml-to-xlsx-lambda-role",
+    [string]$FunctionName = "abacus-toolbox",
+    [string]$RepositoryName = "abacus-toolbox",
+    [string]$RoleName = "abacus-toolbox-lambda-role",
     [string]$Profile = ""
 )
 

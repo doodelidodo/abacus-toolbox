@@ -3,7 +3,7 @@
     Installiert (oder aktualisiert) den FSM XML -> XLSX Service als Windows-Dienst.
     Muss als Administrator laufen. Vorher build-windows-service.ps1 ausführen.
 
-.PARAMETER InstallDir  Zielordner (Standard: C:\Program Files\FsmXmlToXlsx)
+.PARAMETER InstallDir  Zielordner (Standard: C:\Program Files\AbacusToolbox)
 .PARAMETER Port        Port (Standard 8000)
 .PARAMETER ListenAll   Auch von anderen Rechnern erreichbar (0.0.0.0) + Firewall-Regel.
                        Ohne Schalter nur lokal (127.0.0.1) – richtig, wenn Abacus auf demselben Server läuft.
@@ -16,38 +16,48 @@
     powershell -ExecutionPolicy Bypass -File .\install-service.ps1 -ListenAll -ApiKey "langer-geheimer-key"
 #>
 param(
-    [string]$InstallDir = "C:\Program Files\FsmXmlToXlsx",
+    [string]$InstallDir = "C:\Program Files\AbacusToolbox",
     [int]$Port = 0,
     [switch]$ListenAll,
     [string]$ApiKey = $null,
     [string]$Modules = $null
 )
 $ErrorActionPreference = "Stop"
-$ServiceName = "FsmXmlToXlsx"
-$DisplayName = "FSM XML to XLSX Service"
-$Source = Join-Path $PSScriptRoot "dist\fsm-xml-service"
+$ServiceName = "AbacusToolbox"
+$DisplayName = "Abacus Toolbox"
+$Source = Join-Path $PSScriptRoot "dist\abacus-toolbox"
 
 function Step($text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) { throw "Bitte PowerShell als Administrator starten (Rechtsklick -> Als Administrator ausführen)." }
-if (-not (Test-Path (Join-Path $Source "fsm-xml-service.exe"))) { throw "Build nicht gefunden: $Source. Zuerst build-windows-service.ps1 ausführen." }
+if (-not (Test-Path (Join-Path $Source "abacus-toolbox.exe"))) { throw "Build nicht gefunden: $Source. Zuerst build-windows-service.ps1 ausführen." }
 
 $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+
+# Vorgängerversion (bis 1.x hiess der Dienst "FsmXmlToXlsx") wird abgelöst, Einstellungen werden übernommen
+$LegacyName = "FsmXmlToXlsx"
+$LegacyDir = "C:\Program Files\FsmXmlToXlsx"
+$legacy = Get-Service -Name $LegacyName -ErrorAction SilentlyContinue
+$settingsSource = Join-Path $InstallDir "settings.json"
+if (-not (Test-Path $settingsSource) -and (Test-Path (Join-Path $LegacyDir "settings.json"))) {
+    $settingsSource = Join-Path $LegacyDir "settings.json"
+}
 
 # --- Port prüfen, bevor irgendetwas geändert wird -------------------------------
 $checkPort = $Port
 if ($checkPort -le 0) {
     $checkPort = 8000
-    $sp = Join-Path $InstallDir "settings.json"
-    if (Test-Path $sp) { try { $checkPort = [int]((Get-Content $sp -Raw | ConvertFrom-Json).port) } catch { } }
+    if (Test-Path $settingsSource) { try { $checkPort = [int]((Get-Content $settingsSource -Raw | ConvertFrom-Json).port) } catch { } }
 }
-$ownPid = $null
-if ($existing -and $existing.Status -eq "Running") {
-    $ownPid = (Get-CimInstance Win32_Service -Filter "Name='$ServiceName'").ProcessId
+# eigene Prozesse (dieser Dienst bzw. die Vorgängerversion) zählen nicht als Konflikt
+$ownPids = @()
+foreach ($svcName in @($ServiceName, $LegacyName)) {
+    $svc = Get-CimInstance Win32_Service -Filter "Name='$svcName'" -ErrorAction SilentlyContinue
+    if ($svc -and $svc.ProcessId) { $ownPids += [int]$svc.ProcessId }
 }
 $listeners = @(Get-NetTCPConnection -LocalPort $checkPort -State Listen -ErrorAction SilentlyContinue |
-    Where-Object { $_.OwningProcess -ne $ownPid })
+    Where-Object { $ownPids -notcontains [int]$_.OwningProcess })
 if ($listeners.Count -gt 0) {
     $names = ($listeners | ForEach-Object {
         $proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
@@ -62,8 +72,28 @@ if ($existing -and $existing.Status -ne "Stopped") {
     (Get-Service $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(30))
 }
 
-Step "Dateien nach $InstallDir kopieren"
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+
+if ($legacy) {
+    Step "Vorgängerversion '$LegacyName' ablösen"
+    if ($legacy.Status -ne "Stopped") {
+        Stop-Service -Name $LegacyName -Force
+        (Get-Service $LegacyName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(30))
+    }
+    sc.exe delete $LegacyName | Out-Null
+    Get-NetFirewallRule -DisplayName "FSM XML to XLSX (*" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+    Write-Host "alter Dienst entfernt"
+}
+foreach ($f in @("settings.json", "xml_to_xlsx_config.json")) {
+    $old = Join-Path $LegacyDir $f
+    $new = Join-Path $InstallDir $f
+    if ((Test-Path $old) -and -not (Test-Path $new)) {
+        Copy-Item $old $new
+        Write-Host "$f aus $LegacyDir übernommen"
+    }
+}
+
+Step "Dateien nach $InstallDir kopieren"
 # Programmdateien ersetzen, settings.json / Config / logs des Kunden behalten
 Get-ChildItem $Source | Where-Object { $_.Name -notin @("settings.json", "xml_to_xlsx_config.json") } |
     ForEach-Object { Copy-Item $_.FullName $InstallDir -Recurse -Force }
@@ -86,7 +116,7 @@ if ($PSBoundParameters.ContainsKey("Modules")) { $settings.modules = @(($Modules
 [System.IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json))
 Write-Host ($settings | ConvertTo-Json)
 
-$exe = Join-Path $InstallDir "fsm-xml-service.exe"
+$exe = Join-Path $InstallDir "abacus-toolbox.exe"
 if (-not $existing) {
     Step "Dienst '$ServiceName' anlegen"
     New-Service -Name $ServiceName -DisplayName $DisplayName -BinaryPathName "`"$exe`"" `
@@ -97,7 +127,7 @@ if (-not $existing) {
 
 if ($settings.host -eq "0.0.0.0") {
     Step "Firewall-Regel für Port $($settings.port)"
-    $ruleName = "FSM XML to XLSX ($($settings.port))"
+    $ruleName = "Abacus Toolbox ($($settings.port))"
     if (-not (Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue)) {
         New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -Protocol TCP -LocalPort $settings.port -Action Allow | Out-Null
     }
@@ -118,6 +148,7 @@ if ($ok) {
     Write-Host "Health: $($h.status)  |  Config: $($h.config)" -ForegroundColor Green
     Write-Host "`nDienst läuft:  $url/convert/raw   (Swagger: $url/docs)"
     Write-Host "Logs:          $InstallDir\logs\service.log"
+    if (Test-Path $LegacyDir) { Write-Host "Hinweis: Der Ordner der Vorgängerversion ($LegacyDir) wird nicht mehr gebraucht und kann gelöscht werden." -ForegroundColor Yellow }
 } else {
     Write-Host "Dienst antwortet nicht. Siehe $InstallDir\logs\service.log bzw. Ereignisanzeige -> Windows-Protokolle -> Anwendung." -ForegroundColor Red
     exit 1

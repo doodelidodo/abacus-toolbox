@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Baut den Service als Windows-Programm (Ordner dist\fsm-xml-service) – ohne Docker.
+    Baut den Service als Windows-Programm (Ordner dist\abacus-toolbox) – ohne Docker.
     Danach: install-service.ps1 (als Administrator) installiert ihn als Windows-Dienst.
 
 .EXAMPLE
@@ -36,7 +36,7 @@ Step "PyInstaller"
 Push-Location $Here
 try {
     & $py -m PyInstaller --noconfirm --clean --onedir --console `
-        --name fsm-xml-service `
+        --name abacus-toolbox `
         --paths $AppDir --paths $FsmDir `
         --hidden-import main --hidden-import xml_to_xlsx `
         --collect-submodules core --collect-submodules modules `
@@ -47,30 +47,30 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller fehlgeschlagen." }
 } finally { Pop-Location }
 
-$Dist = Join-Path $Here "dist\fsm-xml-service"
+$Dist = Join-Path $Here "dist\abacus-toolbox"
 Copy-Item (Join-Path $FsmDir "xml_to_xlsx_config.json") $Dist -Force
 
 Step "Installationspaket (ZIP) für Kundenserver"
 $version = "dev"
-$m = Select-String -Path (Join-Path $AppDir "main.py") -Pattern 'version="([^"]+)"' | Select-Object -First 1
+$m = Select-String -Path (Join-Path $AppDir "core\settings.py") -Pattern '^VERSION\s*=\s*"([^"]+)"' | Select-Object -First 1
 if ($m) { $version = $m.Matches[0].Groups[1].Value }
 $ReleaseDir = Join-Path $Here "release"
-$Stage = Join-Path $ReleaseDir "fsm-xml-service-$version"
+$Stage = Join-Path $ReleaseDir "abacus-toolbox-$version"
 if (Test-Path $Stage) { Remove-Item $Stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path (Join-Path $Stage "dist") | Out-Null
 Copy-Item $Dist (Join-Path $Stage "dist") -Recurse
 Copy-Item (Join-Path $Here "install-service.ps1"), (Join-Path $Here "uninstall-service.ps1"), (Join-Path $Here "INSTALLATION.txt") $Stage
-$Zip = Join-Path $ReleaseDir "fsm-xml-service-$version.zip"
+$Zip = Join-Path $ReleaseDir "abacus-toolbox-$version.zip"
 if (Test-Path $Zip) { Remove-Item $Zip -Force }
 Compress-Archive -Path (Join-Path $Stage "*") -DestinationPath $Zip
 Remove-Item $Stage -Recurse -Force
 
 Step "Fertig"
-Write-Host "Programm:  $Dist\fsm-xml-service.exe"
+Write-Host "Programm:  $Dist\abacus-toolbox.exe"
 Write-Host "Paket:     $Zip   <- diese Datei auf den Kundenserver kopieren (Anleitung: INSTALLATION.txt in der ZIP)"
 Write-Host ""
 Write-Host "Schnelltest im Fenster (Ctrl+C beendet):"
-Write-Host "  & '$Dist\fsm-xml-service.exe' run"
+Write-Host "  & '$Dist\abacus-toolbox.exe' run"
 Write-Host ""
 Write-Host "Auf diesem Rechner als Dienst installieren (PowerShell als Administrator):"
 Write-Host "  powershell -ExecutionPolicy Bypass -File '$Here\install-service.ps1'"

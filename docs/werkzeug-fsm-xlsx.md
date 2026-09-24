@@ -84,7 +84,7 @@ Wo die Konfiguration im Betrieb liegt:
 | Variante | Datei | Änderung wirkt |
 |---|---|---|
 | Docker (compose) | `converter/xml_to_xlsx_config.json` (eingebunden) | sofort |
-| Windows-Dienst | `C:\Program Files\FsmXmlToXlsx\xml_to_xlsx_config.json` | sofort |
+| Windows-Dienst | `C:\Program Files\AbacusToolbox\xml_to_xlsx_config.json` | sofort |
 | AWS Lambda | im Image eingebaut | nach erneutem `deploy-aws.ps1` |
 
 ## Kommandozeilen-Variante

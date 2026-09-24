@@ -13,7 +13,7 @@ Einstellungen stehen in settings.json neben der .exe:
     }
 
 Aufruf der .exe:
-    fsm-xml-service.exe run      -> im Konsolenfenster starten (zum Testen, Ctrl+C beendet)
+    abacus-toolbox.exe run      -> im Konsolenfenster starten (zum Testen, Ctrl+C beendet)
     (ohne Argumente)             -> wird vom Windows-Dienstmanager so gestartet
 Installation als Dienst: install-service.ps1
 """
@@ -24,8 +24,8 @@ import logging.handlers
 import os
 import sys
 
-SERVICE_NAME = "FsmXmlToXlsx"
-SERVICE_DISPLAY_NAME = "Abacus Toolbox (FSM XML to XLSX)"
+SERVICE_NAME = "AbacusToolbox"
+SERVICE_DISPLAY_NAME = "Abacus Toolbox"
 SERVICE_DESCRIPTION = "Abacus Toolbox: REST-Werkzeuge für Abacus-Prozesse (u.a. FSM-XML -> Excel)."
 
 DEFAULT_SETTINGS = {
@@ -108,7 +108,7 @@ def build_server(settings):
 def run_console():
     settings = load_settings()
     apply_settings(settings, log_to_file=False)
-    log = logging.getLogger("fsm-service")
+    log = logging.getLogger("abacus-toolbox")
     log.info("Konsolenmodus: http://%s:%s  (Config: %s, API-Key: %s) - beenden mit Ctrl+C",
              settings["host"], settings["port"], settings["config_path"],
              "aktiv" if settings.get("api_key") else "aus")
@@ -139,7 +139,7 @@ def run_service_dispatcher():
                 self.server.should_exit = True
 
         def SvcDoRun(self):
-            log = logging.getLogger("fsm-service")
+            log = logging.getLogger("abacus-toolbox")
             try:
                 settings = load_settings()
                 apply_settings(settings, log_to_file=True)
@@ -170,7 +170,7 @@ def main():
         run_service_dispatcher()
     except Exception as exc:  # z.B. per Doppelklick gestartet statt vom Dienstmanager
         print(f"Kein Dienst-Kontext ({exc}).\n")
-        print("Zum Testen im Fenster:   fsm-xml-service.exe run")
+        print("Zum Testen im Fenster:   abacus-toolbox.exe run")
         print("Als Dienst installieren: install-service.ps1 (als Administrator)")
 
 

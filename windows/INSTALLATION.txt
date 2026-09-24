@@ -3,7 +3,7 @@ Abacus Toolbox  |  Installation als Windows-Dienst
 
 Voraussetzung: Windows Server / Windows 10+, Administratorrechte. Python ist NICHT nötig.
 
-1. ZIP auf den Server kopieren und entpacken, z.B. nach C:\Install\fsm-xml-service
+1. ZIP auf den Server kopieren und entpacken, z.B. nach C:\Install\abacus-toolbox
 
 2. Optional: prüfen, ob Port 8000 frei ist (keine Ausgabe = frei):
 
@@ -13,7 +13,7 @@ Voraussetzung: Windows Server / Windows 10+, Administratorrechte. Python ist NIC
 
 3. PowerShell als Administrator öffnen:
 
-     cd C:\Install\fsm-xml-service
+     cd C:\Install\abacus-toolbox
      powershell -ExecutionPolicy Bypass -File .\install-service.ps1
 
    Am Ende muss "Health: ok" stehen.
@@ -33,8 +33,8 @@ Voraussetzung: Windows Server / Windows 10+, Administratorrechte. Python ist NIC
      -> Die Excel-Datei steht in ResponseFile.
 
 Danach:
-  Programmordner   C:\Program Files\FsmXmlToXlsx
-  Einstellungen    settings.json            (nach Änderung: Restart-Service FsmXmlToXlsx)
+  Programmordner   C:\Program Files\AbacusToolbox
+  Einstellungen    settings.json            (nach Änderung: Restart-Service AbacusToolbox)
   Feldkonfig       xml_to_xlsx_config.json  (wirkt sofort)
   Logs             logs\service.log
   Test             http://localhost:8000/health  ·  Werkzeuge: /modules  ·  Swagger: /docs
@@ -43,5 +43,5 @@ Danach:
   Entfernen        powershell -ExecutionPolicy Bypass -File .\uninstall-service.ps1 [-RemoveFiles]
 
 Ausführliche Doku, Quellcode und neue Versionen:
-  https://github.com/doodelidodo/fsm-xml-to-xlsx
-  (Windows-Dienst: https://github.com/doodelidodo/fsm-xml-to-xlsx/blob/main/docs/betrieb-windows-dienst.md)
+  https://github.com/doodelidodo/abacus-toolbox
+  (Windows-Dienst: https://github.com/doodelidodo/abacus-toolbox/blob/main/docs/betrieb-windows-dienst.md)

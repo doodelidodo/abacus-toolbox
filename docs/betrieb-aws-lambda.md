@@ -7,7 +7,7 @@ Bezahlt wird nur pro Aufruf; bei einigen tausend Umwandlungen pro Monat sind das
 ```mermaid
 flowchart LR
     A[Abacus] -- "HTTPS + X-API-Key" --> G[API Gateway<br/>HTTP API]
-    G --> L[Lambda fsm-xml-to-xlsx<br/>Container-Image aus ECR]
+    G --> L[Lambda abacus-toolbox<br/>Container-Image aus ECR]
     L -. Logs .-> C[CloudWatch]
 ```
 
@@ -51,8 +51,8 @@ Fehlermeldungen mit `explicit deny in a service control policy` deuten immer auf
 ## Bereitstellen und aktualisieren
 
 ```powershell
-git clone https://github.com/doodelidodo/fsm-xml-to-xlsx.git
-cd fsm-xml-to-xlsx
+git clone https://github.com/doodelidodo/abacus-toolbox.git
+cd abacus-toolbox
 powershell -ExecutionPolicy Bypass -File .\deploy-aws.ps1
 ```
 
@@ -87,6 +87,17 @@ API-Key bleiben gleich.
 **Feldkonfiguration des FSM-Werkzeugs:** Auf Lambda ist `converter/xml_to_xlsx_config.json` ins Image eingebaut. Nach einer Änderung
 `deploy-aws.ps1` erneut ausführen.
 
+### Umstieg von Version 1
+
+Bis Version 1 hiessen die AWS-Ressourcen `fsm-xml-to-xlsx`. `deploy-aws.ps1` legt ab Version 2 neue Ressourcen
+mit dem Namen `abacus-toolbox` an. Dadurch gibt es auch eine **neue Adresse** (in Abacus anpassen). Die alte
+Installation entfernen:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\remove-aws.ps1 -FunctionName fsm-xml-to-xlsx `
+  -RepositoryName fsm-xml-to-xlsx -RoleName fsm-xml-to-xlsx-lambda-role
+```
+
 ## Testen
 
 ```powershell
@@ -97,8 +108,8 @@ API-Key bleiben gleich.
 
 | Aufgabe | Befehl / Ort |
 |---|---|
-| Logs live | `aws logs tail /aws/lambda/fsm-xml-to-xlsx --follow --region eu-central-2` |
-| Logs in der Konsole | CloudWatch → Protokollgruppen → `/aws/lambda/fsm-xml-to-xlsx` |
+| Logs live | `aws logs tail /aws/lambda/abacus-toolbox --follow --region eu-central-2` |
+| Logs in der Konsole | CloudWatch → Protokollgruppen → `/aws/lambda/abacus-toolbox` |
 | API-Key anzeigen | `Get-Content .aws-api-key.txt` |
 | Kostenschutz | Konsole → Billing → Budgets, z.B. 5 USD/Monat mit E-Mail-Warnung |
 | Alles entfernen | `powershell -ExecutionPolicy Bypass -File .\remove-aws.ps1` (fragt nach) |

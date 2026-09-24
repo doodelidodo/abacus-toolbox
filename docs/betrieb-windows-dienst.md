@@ -12,7 +12,7 @@ Windows-Dienst direkt auf dem Abacus-Server:
 ```mermaid
 flowchart LR
     subgraph VM[Windows-Server des Kunden]
-        A[Abacus] -- "http://localhost:8000/&lt;werkzeug&gt;" --> D[Dienst FsmXmlToXlsx<br/>Abacus Toolbox<br/>fsm-xml-service.exe]
+        A[Abacus] -- "http://localhost:8000/&lt;werkzeug&gt;" --> D[Dienst AbacusToolbox<br/>Abacus Toolbox<br/>abacus-toolbox.exe]
     end
 ```
 
@@ -21,33 +21,33 @@ flowchart LR
 Voraussetzung: Python 3.11 oder neuer (`py --version`) und Git.
 
 ```powershell
-git clone https://github.com/doodelidodo/fsm-xml-to-xlsx.git
-cd fsm-xml-to-xlsx\windows
+git clone https://github.com/doodelidodo/abacus-toolbox.git
+cd abacus-toolbox\windows
 powershell -ExecutionPolicy Bypass -File .\build-windows-service.ps1
 ```
 
 Das Script legt eine eigene Build-Umgebung an (`windows\.build-venv`), installiert die Abhängigkeiten und baut mit
-PyInstaller den Ordner **`windows\dist\fsm-xml-service\`** (Programm + alles, was es braucht + Feldkonfiguration).
+PyInstaller den Ordner **`windows\dist\abacus-toolbox\`** (Programm + alles, was es braucht + Feldkonfiguration).
 
 Schnelltest im Konsolenfenster, beenden mit Ctrl+C:
 
 ```powershell
-.\dist\fsm-xml-service\fsm-xml-service.exe run
+.\dist\abacus-toolbox\abacus-toolbox.exe run
 ```
 
 Läuft bereits etwas auf Port 8000 (z.B. der Docker-Container: `docker compose down`), vorher stoppen oder in
-`dist\fsm-xml-service\settings.json` einen anderen Port eintragen.
+`dist\abacus-toolbox\settings.json` einen anderen Port eintragen.
 
 Am Ende erzeugt das Script zusätzlich das Installationspaket
-**`windows\release\fsm-xml-service-<version>.zip`** (Programm, Installations-Scripts, Kurzanleitung).
+**`windows\release\abacus-toolbox-<version>.zip`** (Programm, Installations-Scripts, Kurzanleitung).
 
 ## 2. Auf den Server bringen
 
-Nur die ZIP-Datei auf den Kundenserver kopieren und entpacken, z.B. nach `C:\Install\fsm-xml-service`:
+Nur die ZIP-Datei auf den Kundenserver kopieren und entpacken, z.B. nach `C:\Install\abacus-toolbox`:
 
 ```
-C:\Install\fsm-xml-service\
-├── dist\fsm-xml-service\      Programm
+C:\Install\abacus-toolbox\
+├── dist\abacus-toolbox\      Programm
 ├── install-service.ps1
 ├── uninstall-service.ps1
 └── INSTALLATION.txt            Kurzanleitung
@@ -58,16 +58,16 @@ C:\Install\fsm-xml-service\
 PowerShell **als Administrator** öffnen:
 
 ```powershell
-cd C:\Install\fsm-xml-service
+cd C:\Install\abacus-toolbox
 powershell -ExecutionPolicy Bypass -File .\install-service.ps1
 ```
 
 Das Script
 
 1. prüft, ob der Port frei ist. Ist er von einem anderen Programm belegt, bricht es ab, **bevor** etwas geändert wird,
-2. kopiert das Programm nach `C:\Program Files\FsmXmlToXlsx`,
+2. kopiert das Programm nach `C:\Program Files\AbacusToolbox`,
 3. legt `settings.json` an (bestehende Einstellungen und Feldkonfiguration bleiben bei einem Update erhalten),
-4. richtet den Dienst **`FsmXmlToXlsx`** („FSM XML to XLSX Service“) mit automatischem Start und automatischem Neustart bei Fehlern ein,
+4. richtet den Dienst **`AbacusToolbox`** („Abacus Toolbox“) mit automatischem Start und automatischem Neustart bei Fehlern ein,
 5. startet ihn und prüft `http://localhost:<port>/health`.
 
 Optionen:
@@ -78,7 +78,7 @@ Optionen:
 | `-ApiKey "…"` | API-Key setzen (Header `X-API-Key` wird Pflicht) |
 | `-Modules "fsm_xlsx,encoding"` | nur diese Werkzeuge aktivieren (Standard: alle) |
 | `-ListenAll` | auch von anderen Rechnern erreichbar (`0.0.0.0`) und Firewall-Regel anlegen. **Nur mit `-ApiKey` verwenden.** |
-| `-InstallDir "D:\Apps\FsmXmlToXlsx"` | anderer Installationsordner |
+| `-InstallDir "D:\Apps\AbacusToolbox"` | anderer Installationsordner |
 
 ### Port vorher selbst prüfen
 
@@ -90,9 +90,16 @@ Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
 Keine Ausgabe heisst: frei. Programm `System` (PID 4) bedeutet meist IIS oder eine andere Web-Anwendung über den
 Windows-HTTP-Dienst. Dann einen anderen Port wählen (`-Port 8765`) und in Abacus entsprechend eintragen.
 
+### Umstieg von Version 1 (Dienst „FsmXmlToXlsx“)
+
+Bis Version 1 hiess der Dienst `FsmXmlToXlsx` und lag in `C:\Program Files\FsmXmlToXlsx`. `install-service.ps1`
+erkennt diese Installation automatisch: Es stoppt und entfernt den alten Dienst, übernimmt `settings.json` und
+die Feldkonfiguration und installiert die Toolbox als `AbacusToolbox` nach `C:\Program Files\AbacusToolbox`.
+Die bisherigen Abacus-Adressen (`/convert/raw`) funktionieren weiter. Den alten Ordner kann man danach löschen.
+
 ## Einstellungen: `settings.json`
 
-Im Installationsordner (Standard `C:\Program Files\FsmXmlToXlsx\settings.json`):
+Im Installationsordner (Standard `C:\Program Files\AbacusToolbox\settings.json`):
 
 ```json
 {
@@ -116,7 +123,7 @@ Im Installationsordner (Standard `C:\Program Files\FsmXmlToXlsx\settings.json`):
 
 Nach Änderungen an `settings.json` den Dienst neu starten:
 ```powershell
-Restart-Service FsmXmlToXlsx
+Restart-Service AbacusToolbox
 ```
 Änderungen an der **Feldkonfiguration** des FSM-Werkzeugs (`xml_to_xlsx_config.json`) wirken sofort, ohne Neustart.
 
@@ -124,9 +131,9 @@ Restart-Service FsmXmlToXlsx
 
 | Aufgabe | Befehl / Ort |
 |---|---|
-| Status | `Get-Service FsmXmlToXlsx` oder `services.msc` |
-| Neu starten | `Restart-Service FsmXmlToXlsx` (als Administrator) |
-| Logs | `C:\Program Files\FsmXmlToXlsx\logs\service.log` (rotiert, max. 6 × 5 MB) |
+| Status | `Get-Service AbacusToolbox` oder `services.msc` |
+| Neu starten | `Restart-Service AbacusToolbox` (als Administrator) |
+| Logs | `C:\Program Files\AbacusToolbox\logs\service.log` (rotiert, max. 6 × 5 MB) |
 | Startfehler | zusätzlich Ereignisanzeige → Windows-Protokolle → Anwendung |
 | Update | neue ZIP bauen, auf dem Server entpacken, `install-service.ps1` erneut ausführen |
 | Entfernen | `uninstall-service.ps1` (als Administrator); mit `-RemoveFiles` auch den Programmordner |
