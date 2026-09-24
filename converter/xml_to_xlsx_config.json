@@ -23,6 +23,7 @@
       {"name": "ServiceCallCode", "context": "data", "path": "code"},
       {"name": "ServiceCallSubject", "context": "data", "path": "subject"},
       {"name": "ActivityCode", "context": "activity", "path": "code"},
+	  {"name": "ResponsibleCode", "context": "activity", "path": "responsibles/code", "multiple": true},
       {"name": "ActivitySubject", "context": "activity", "path": "subject"},
       {"name": "ExpenseId", "context": "expense", "path": "id"},
       {"name": "ExpenseDate", "context": "expense", "path": "date"},
